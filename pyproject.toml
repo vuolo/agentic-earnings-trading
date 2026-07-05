@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentic-earnings-trading"
+version = "0.1.0"
+description = "Claude-orchestrated earnings-event trading with a risk-gated paper broker"
+requires-python = ">=3.11"
+dependencies = ["mcp>=1.2"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools]
+packages = ["engine", "gateway", "orchestrator"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -248,6 +248,51 @@ def report_live_close(decision_id: int, exit_price: float, notes: str = "") -> s
 
 
 @mcp.tool()
+def report_account_snapshot(
+    equity_usd: float, cash_usd: float, buying_power_usd: float
+) -> str:
+    """Report the REAL account state (from get_accounts/get_portfolio) so every
+    agent sees it in the context pack. The executor calls this at the start of
+    every run — balance awareness is mandatory before any order."""
+    from datetime import datetime, timezone
+    STORE.meta_set("account_snapshot", json.dumps({
+        "equity_usd": equity_usd,
+        "cash_usd": cash_usd,
+        "buying_power_usd": buying_power_usd,
+        "reported_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }))
+    return f"Account snapshot recorded.\n\n{_pack()}"
+
+
+@mcp.tool()
+def record_backtest_result(
+    symbol: str, report_date: str, timing: str = "unknown",
+    pre_close: float = 0.0, post_open: float = 0.0, post_close: float = 0.0,
+    details_json: str = "",
+) -> str:
+    """Record one historical earnings event for backtesting: the last close
+    BEFORE the report (pre_close), and the first open and close AFTER it.
+    These drive the gap/drift stats that align entries and exits."""
+    try:
+        bid = STORE.upsert_backtest(
+            symbol, report_date, timing,
+            pre_close=pre_close or None, post_open=post_open or None,
+            post_close=post_close or None, raw=details_json or None,
+        )
+    except ValueError:
+        return f"ERROR: report_date {report_date!r} is not YYYY-MM-DD.\n\n{_pack()}"
+    return f"Recorded backtest event #{bid}: {symbol.upper()} {report_date}."
+
+
+@mcp.tool()
+def get_backtest_summary(symbol: str = "") -> str:
+    """Backtest stats for one symbol (or all): gap (T-1 close → post-report
+    open — what our entry window captures) and drift (post-report open →
+    close). Consult this before deciding direction, sizing, and exit timing."""
+    return json.dumps(STORE.backtest_summary(symbol or None), indent=1)
+
+
+@mcp.tool()
 def get_performance_summary() -> str:
     """Aggregate performance of the decision dataset: closed trades, win count,
     total P&L, labeled pass counterfactuals, rejections, execution failures."""

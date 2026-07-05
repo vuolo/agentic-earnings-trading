@@ -16,10 +16,11 @@ Every gateway tool response ends with a CONTEXT PACK — read it each time.
    symbol, or no upcoming event is recorded within 14 days, submit nothing —
    report why and stop.
 2. Gather the full feature snapshot required by the Policy (implied move,
-   historical reactions, trend, valuation, sentiment, event details). Use the
-   tools; compute carefully; show your arithmetic for the implied move and
-   historical stats in your final report. Mark anything unavailable as
-   `"unavailable"` — never invent numbers.
+   historical reactions, **backtest alignment via `get_backtest_summary`**,
+   trend, valuation, sentiment, event details). Use the tools; compute
+   carefully; show your arithmetic for the implied move and historical stats
+   in your final report. Mark anything unavailable as `"unavailable"` — never
+   invent numbers.
 3. Weigh the evidence against the Policy's entry rules. Decide:
    `long_equity`, `bearish_option`, or `pass`, with a conviction in [0, 1].
 4. Fetch a fresh quote for the entry reference price, then call

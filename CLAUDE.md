@@ -10,7 +10,14 @@ Headless agent runs (`claude -p`) analyze upcoming earnings using **read-only**
 Robinhood MCP tools and submit decisions to a **local gateway MCP server**. The
 gateway runs a **server-side risk gate** and records everything — decisions
 with their full feature snapshots, then labeled outcomes — into SQLite. That
-dataset will train an ML sidecar (Phase 4). Currently **paper mode only**.
+dataset will train an ML sidecar (Phase 4).
+
+**LIVE since 2026-07-05** (operator-armed; ~$150 account; caps $120/position,
+$140/day; arm expires 2026-08-04 — re-arm consciously, don't auto-renew).
+Strategy = policy v0.2.0 event-window gap capture: AMC enter ~15:45 ET report
+day / exit after-hours or next open; BMO enter T-1 close / exit post-report
+open. Three ticks daily: 09:31 exits · 15:40 entries · 16:50 AMC after-hours
+exits (PDT-budgeted).
 
 ## Critical rules — memorize before touching anything
 
@@ -75,9 +82,10 @@ dataset will train an ML sidecar (Phase 4). Currently **paper mode only**.
     # Manual paper close / labeling (the daily tick's labeler handles this too)
     python -m orchestrator.main close NVDA --price 187.50 --notes "T+1 open"
 
-    # Daily automation (launchd; installed 2026-07-05 at 09:45 local)
-    python -m orchestrator.daily --dry-run       # what would the tick do
-    python -m orchestrator.daily                 # full tick now
+    # Daily automation (launchd; fires 09:31 / 15:40 / 16:50 local)
+    python -m orchestrator.daily --dry-run                    # auto phase
+    python -m orchestrator.daily --phase afternoon --dry-run  # specific phase
+    python -m orchestrator.main backtest [SYMBOL]             # backfill gap/drift stats
     python -m orchestrator.schedule status       # loaded state + stderr tail
     python -m orchestrator.schedule install --hour 10 --minute 0   # reschedule
     python -m orchestrator.schedule uninstall

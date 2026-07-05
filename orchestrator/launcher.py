@@ -59,7 +59,7 @@ ROLES: dict[str, Role] = {
     "analyst": Role(
         prompt_file="analyst.md",
         rb_tools=ANALYST_RB_TOOLS,
-        gw_tools=("get_context_pack", "submit_decision"),
+        gw_tools=("get_context_pack", "submit_decision", "get_backtest_summary"),
         kickoff=(
             "Analyze the upcoming earnings event for {symbol} and submit a "
             "decision per your instructions. Start by calling get_context_pack."
@@ -79,16 +79,26 @@ ROLES: dict[str, Role] = {
     "executor": Role(
         prompt_file="executor.md",
         rb_tools=(
+            "get_accounts", "get_portfolio",
             "get_equity_quotes", "get_equity_positions", "get_equity_orders",
             "review_equity_order", "place_equity_order", "cancel_equity_order",
         ),
         gw_tools=(
             "get_context_pack", "get_pending_executions",
-            "report_execution", "report_live_close",
+            "report_execution", "report_live_close", "report_account_snapshot",
         ),
         kickoff=(
             "Execute exactly these jobs, then stop — {symbol}. "
             "Start by calling get_context_pack, then get_pending_executions."
+        ),
+    ),
+    "backtester": Role(
+        prompt_file="backtester.md",
+        rb_tools=("get_earnings_results", "get_equity_historicals", "search"),
+        gw_tools=("get_context_pack", "record_backtest_result", "get_backtest_summary"),
+        kickoff=(
+            "Backfill backtest data per your instructions for: {symbol}. "
+            "Start by calling get_context_pack."
         ),
     ),
     "strategist": Role(
@@ -96,7 +106,8 @@ ROLES: dict[str, Role] = {
         rb_tools=(),
         gw_tools=(
             "get_context_pack", "get_performance_summary",
-            "get_labeled_decisions", "propose_policy_update",
+            "get_labeled_decisions", "get_backtest_summary",
+            "propose_policy_update",
         ),
         kickoff=(
             "Run a policy review per your instructions. Start by calling "

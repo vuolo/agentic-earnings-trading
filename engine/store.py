@@ -72,10 +72,28 @@ CREATE TABLE IF NOT EXISTS meta (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS backtests (
+    id          INTEGER PRIMARY KEY,
+    symbol      TEXT NOT NULL,
+    report_date TEXT NOT NULL,
+    timing      TEXT NOT NULL DEFAULT 'unknown',
+    pre_close   REAL,
+    post_open   REAL,
+    post_close  REAL,
+    raw         TEXT,
+    created_at  TEXT NOT NULL,
+    UNIQUE (symbol, report_date)
+);
 """
 
 # Exposure counts everything that consumed (or is consuming) capital budget.
 _BUDGET_STATUSES = "('open_paper', 'closed_paper', 'pending_live', 'open_live', 'closed_live')"
+
+# An event has "reacted" once its report is in the past — including a bmo
+# report on the morning of `today` (it landed before the open, so the market
+# has already reacted by the morning tick).
+_REACTED = "(e.report_date < :today OR (e.report_date = :today AND e.timing = 'bmo'))"
 
 
 def _now() -> str:
@@ -239,38 +257,63 @@ class Store:
     # -- close / outcome labeling ---------------------------------------------
 
     def due_closes(self, today: str) -> list[sqlite3.Row]:
-        """Open paper positions whose event report date has passed — due for
-        T+1 close-out and outcome labeling."""
+        """Open paper positions whose event has reacted — due for close-out at
+        the next open and outcome labeling."""
         return self._db.execute(
-            """SELECT d.*, e.report_date, e.timing FROM decisions d
-               JOIN events e ON e.id = d.event_id
-               WHERE d.status = 'open_paper' AND e.report_date < ?
-               ORDER BY e.report_date, d.symbol""",
-            (today,),
+            f"""SELECT d.*, e.report_date, e.timing FROM decisions d
+                JOIN events e ON e.id = d.event_id
+                WHERE d.status = 'open_paper' AND {_REACTED}
+                ORDER BY e.report_date, d.symbol""",
+            {"today": today},
         ).fetchall()
 
     def due_live_closes(self, today: str) -> list[sqlite3.Row]:
-        """Open LIVE positions whose event report date has passed — the
-        executor must sell and report the real fill."""
+        """Open LIVE positions whose event has reacted — the executor must
+        sell at/after the open and report the real fill."""
+        return self._db.execute(
+            f"""SELECT d.*, e.report_date, e.timing FROM decisions d
+                JOIN events e ON e.id = d.event_id
+                WHERE d.status = 'open_live' AND {_REACTED}
+                ORDER BY e.report_date, d.symbol""",
+            {"today": today},
+        ).fetchall()
+
+    def due_amc_same_day_closes(self, today: str) -> list[sqlite3.Row]:
+        """Open LIVE positions for AMC events reporting TODAY — candidates for
+        a same-day after-hours exit (a day trade; the tick checks the PDT
+        budget before authorizing these)."""
         return self._db.execute(
             """SELECT d.*, e.report_date, e.timing FROM decisions d
                JOIN events e ON e.id = d.event_id
-               WHERE d.status = 'open_live' AND e.report_date < ?
-               ORDER BY e.report_date, d.symbol""",
+               WHERE d.status = 'open_live' AND e.report_date = ?
+                 AND e.timing = 'amc'
+               ORDER BY d.symbol""",
             (today,),
         ).fetchall()
 
     def due_pass_labels(self, today: str) -> list[sqlite3.Row]:
-        """Pass decisions whose event has passed and that have no outcome yet —
-        due for counterfactual labeling (what would the trade have done)."""
+        """Pass decisions whose event has reacted and that have no outcome yet
+        — due for counterfactual labeling (what would the trade have done)."""
         return self._db.execute(
-            """SELECT d.*, e.report_date, e.timing FROM decisions d
-               JOIN events e ON e.id = d.event_id
-               LEFT JOIN outcomes o ON o.decision_id = d.id
-               WHERE d.status = 'pass' AND e.report_date < ? AND o.id IS NULL
-               ORDER BY e.report_date, d.symbol""",
-            (today,),
+            f"""SELECT d.*, e.report_date, e.timing FROM decisions d
+                JOIN events e ON e.id = d.event_id
+                LEFT JOIN outcomes o ON o.decision_id = d.id
+                WHERE d.status = 'pass' AND {_REACTED} AND o.id IS NULL
+                ORDER BY e.report_date, d.symbol""",
+            {"today": today},
         ).fetchall()
+
+    def day_trades_last_5d(self) -> int:
+        """Same-day live round trips in the trailing week — our own PDT
+        counter (accounts under $25k get 3 day trades per 5 trading days)."""
+        row = self._db.execute(
+            """SELECT COUNT(*) AS n FROM outcomes o
+               JOIN decisions d ON d.id = o.decision_id
+               WHERE d.status = 'closed_live'
+                 AND substr(d.created_at, 1, 10) = substr(o.labeled_at, 1, 10)
+                 AND o.labeled_at >= datetime('now', '-7 days')"""
+        ).fetchone()
+        return int(row["n"])
 
     def _record_outcome(
         self, decision: sqlite3.Row, exit_price: float, notes: str, new_status: str | None
@@ -395,6 +438,83 @@ class Store:
             (limit,),
         ).fetchall()
         return [dict(r) for r in rows]
+
+    # -- backtests --------------------------------------------------------------
+
+    def upsert_backtest(
+        self, symbol: str, report_date: str, timing: str = "unknown",
+        pre_close: float | None = None, post_open: float | None = None,
+        post_close: float | None = None, raw: str | None = None,
+    ) -> int:
+        symbol = symbol.strip().upper()
+        date.fromisoformat(report_date)
+        if timing not in ("bmo", "amc", "unknown"):
+            timing = "unknown"
+        self._db.execute(
+            """INSERT INTO backtests
+               (symbol, report_date, timing, pre_close, post_open, post_close, raw, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT (symbol, report_date) DO UPDATE SET
+                   timing = CASE WHEN excluded.timing = 'unknown'
+                                 THEN backtests.timing ELSE excluded.timing END,
+                   pre_close = COALESCE(excluded.pre_close, backtests.pre_close),
+                   post_open = COALESCE(excluded.post_open, backtests.post_open),
+                   post_close = COALESCE(excluded.post_close, backtests.post_close),
+                   raw = COALESCE(excluded.raw, backtests.raw)""",
+            (symbol, report_date, timing, pre_close, post_open, post_close, raw, _now()),
+        )
+        self._db.commit()
+        row = self._db.execute(
+            "SELECT id FROM backtests WHERE symbol = ? AND report_date = ?",
+            (symbol, report_date),
+        ).fetchone()
+        return int(row["id"])
+
+    def backtest_summary(self, symbol: str | None = None) -> dict[str, Any]:
+        """Stats for the strategy's two windows, from recorded past events:
+        gap = T-1 close → post-report open (what the overnight/entry window
+        captures); drift = post-report open → close (what holding through the
+        reaction day adds)."""
+        q = "SELECT * FROM backtests WHERE pre_close > 0 AND post_open > 0"
+        args: tuple = ()
+        if symbol:
+            q += " AND symbol = ?"
+            args = (symbol.strip().upper(),)
+        rows = self._db.execute(q + " ORDER BY report_date", args).fetchall()
+
+        def stats(values: list[float]) -> dict[str, Any] | None:
+            if not values:
+                return None
+            n = len(values)
+            mean = sum(values) / n
+            var = sum((v - mean) ** 2 for v in values) / n
+            return {
+                "n": n,
+                "mean_pct": round(mean, 2),
+                "std_pct": round(var ** 0.5, 2),
+                "mean_abs_pct": round(sum(abs(v) for v in values) / n, 2),
+                "up_rate": round(sum(v > 0 for v in values) / n, 2),
+                "worst_pct": round(min(values), 2),
+                "best_pct": round(max(values), 2),
+            }
+
+        gaps = [(r["post_open"] - r["pre_close"]) / r["pre_close"] * 100 for r in rows]
+        drifts = [
+            (r["post_close"] - r["post_open"]) / r["post_open"] * 100
+            for r in rows if r["post_close"] and r["post_close"] > 0
+        ]
+        return {
+            "symbol": symbol.strip().upper() if symbol else "ALL",
+            "events": len(rows),
+            "gap_t1close_to_postopen": stats(gaps),
+            "drift_postopen_to_postclose": stats(drifts),
+        }
+
+    def backtest_events(self, symbol: str) -> list[sqlite3.Row]:
+        return self._db.execute(
+            "SELECT * FROM backtests WHERE symbol = ? ORDER BY report_date",
+            (symbol.strip().upper(),),
+        ).fetchall()
 
     def performance_summary(self) -> dict[str, Any]:
         db = self._db

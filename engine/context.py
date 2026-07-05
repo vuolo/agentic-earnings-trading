@@ -8,6 +8,7 @@ status round-trip.
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 
 from . import arming
@@ -37,8 +38,25 @@ def build_context_pack(cfg: Config, store: Store) -> str:
         f"risk: per-position cap ${limits.max_position_usd:,.0f} | "
         f"daily new-exposure ${used:,.2f} used of ${limits.max_daily_new_exposure_usd:,.0f} | "
         f"open positions {len(open_pos)}/{limits.max_open_positions}",
+        f"pdt: {store.day_trades_last_5d()}/3 same-day live round trips used "
+        "(trailing week — 4th one is blocked for accounts under $25k)",
         f"universe: {', '.join(cfg.universe) if cfg.universe else '(unrestricted)'}",
     ]
+
+    snap = store.meta_get("account_snapshot", "")
+    if snap:
+        try:
+            s = json.loads(snap)
+            lines.append(
+                f"account (executor-reported {s.get('reported_at', '?')}): "
+                f"equity ${float(s.get('equity_usd', 0)):,.2f} | "
+                f"cash ${float(s.get('cash_usd', 0)):,.2f} | "
+                f"buying power ${float(s.get('buying_power_usd', 0)):,.2f}"
+            )
+        except (ValueError, TypeError):
+            pass
+    else:
+        lines.append("account: no snapshot yet (first executor run will report it)")
 
     if open_pos:
         lines.append("open_paper_positions:")
@@ -67,6 +85,12 @@ def build_context_pack(cfg: Config, store: Store) -> str:
                 f"[{d['status']}] (policy {d['policy_version']})"
             )
 
+    lines.append(
+        "strategy_windows: AMC → enter ~15:40-15:55 ET on report day, exit "
+        "same-day after-hours only if the orchestrator authorized it (PDT), "
+        "else next open. BMO → enter near close the prior trading day, exit "
+        "at the post-report open."
+    )
     lines.append(
         "reminders: bearish = options (no equity shorting on Robinhood); "
         "every submit_decision must include the real feature snapshot; "

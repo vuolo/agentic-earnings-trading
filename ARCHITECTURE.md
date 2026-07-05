@@ -121,6 +121,32 @@ Phase 5 only), **portfolio reviewer**.
 
 Timestamps are UTC ISO-8601. "Today" for the daily risk budget is the UTC day.
 
+## 3.5 Live strategy (operator-directed, 2026-07-05 — policy v0.2.0)
+
+Real capital (~$150 account, live caps $120/position, $140/day). Event-window
+gap capture, cash-first:
+
+- **AMC**: decide + enter on the afternoon tick (fills ~15:45–15:58 ET before
+  the close); exit same-day after-hours on the evening tick when the PDT
+  budget allows, else next open. Minutes-to-hours exposure.
+- **BMO**: decide + enter T-1 afternoon; exit at the post-report open on the
+  morning tick. Overnight exposure through the print — higher evidence bar.
+- **Backtest alignment**: the backtests table stores per-event pre_close /
+  post_open / post_close for past reports; `get_backtest_summary` turns that
+  into gap and drift stats the analyst must weigh (up_rate, worst gap vs.
+  sizing) before entering.
+- **Balance-aware**: the executor reports a real account snapshot
+  (equity/cash/buying power) at the start of every run; it sizes down to
+  buying power, never up. The context pack shows the snapshot and the PDT
+  budget to every agent.
+- **PDT**: under $25k = 3 same-day round trips per 5 trading days. The store
+  counts our own live same-day round trips; the evening tick refuses same-day
+  exits that would breach it (positions ride to the open instead).
+
+Tick schedule (launchd, local = ET): **09:31** morning (exits at the open,
+labeling, scout, strategist) · **15:40** afternoon (analysis + entries) ·
+**16:50** evening (authorized AMC after-hours exits).
+
 ## 4. Trading constraints & simplifications
 
 - **No equity shorting on Robinhood.** The bearish action is `bearish_option`
@@ -231,3 +257,11 @@ Keep this section honest — dated entries only, from real runs.
   fixed a real upsert bug the dry-run exposed: an event link from
   `submit_decision` downgraded TSM's timing bmo→unknown; upserts now never
   overwrite known timing with 'unknown'. 39 tests passing.
+- **2026-07-05** — **ARMED for live trading** (operator instruction): caps
+  $120/position, $140/day, expires 2026-08-04. Policy v0.2.0 (operator-
+  directed): event-window strategy, $100 base size, backtest alignment
+  required. Three-phase tick installed (09:31/15:40/16:50). Backtester role
+  added; historical gap/drift backfill run started. 46 tests passing. First
+  live-eligible event: TSM 2026-07-16 bmo (entry window 7/15 ~15:45 ET) —
+  its 0.1.0 pass will be re-analyzed under v0.2.0 (pass-from-older-policy
+  re-analysis rule in daily.py).

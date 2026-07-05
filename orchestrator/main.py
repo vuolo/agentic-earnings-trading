@@ -50,12 +50,21 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("disarm", help="disarm live trading immediately")
 
+    p_bt = sub.add_parser("backtest", help="backfill historical earnings reactions")
+    p_bt.add_argument("symbol", nargs="?", default="")
+    p_bt.add_argument("--model", default=launcher.DEFAULT_MODEL)
+
     args = parser.parse_args(argv)
 
     if args.cmd == "scout":
         return launcher.run_role("scout", model=args.model)
     if args.cmd == "analyze":
         return launcher.run_role("analyst", symbol=args.symbol.upper(), model=args.model)
+
+    if args.cmd == "backtest":
+        target = args.symbol.upper() if args.symbol else \
+            "every symbol in the universe (see the context pack)"
+        return launcher.run_role("backtester", symbol=target, model=args.model)
 
     if args.cmd == "arm-live":
         from engine import arming
@@ -81,7 +90,13 @@ def main(argv: list[str] | None = None) -> int:
         print("disarmed" if arming.disarm() else "already disarmed")
         return 0
 
+    import dataclasses
+
     cfg = Config.from_env()
+    if "EARNINGS_POLICY_VERSION" not in __import__("os").environ:
+        cfg = dataclasses.replace(
+            cfg, policy_version=launcher.policy_text_and_version()[1]
+        )
     store = Store(cfg.db_path)
     try:
         if args.cmd == "status":

@@ -43,7 +43,15 @@ def _path_env() -> str:
     return ":".join(parts)
 
 
+# Market-phase fire times (local = ET): morning exits just after the open,
+# afternoon entries just before the close, evening AMC exits in after-hours.
+FIRE_TIMES = ((9, 31), (15, 40), (16, 50))
+
+
 def _plist(hour: int, minute: int, model: str) -> dict:
+    intervals = [{"Hour": h, "Minute": m} for h, m in FIRE_TIMES]
+    if (hour, minute) not in FIRE_TIMES:
+        intervals.append({"Hour": hour, "Minute": minute})
     return {
         "Label": LABEL,
         "ProgramArguments": [
@@ -51,7 +59,7 @@ def _plist(hour: int, minute: int, model: str) -> dict:
         ],
         "WorkingDirectory": str(REPO_ROOT),
         "EnvironmentVariables": {"PATH": _path_env()},
-        "StartCalendarInterval": {"Hour": hour, "Minute": minute},
+        "StartCalendarInterval": intervals,
         "RunAtLoad": False,
         "StandardOutPath": str(LOGS / "launchd_stdout.log"),
         "StandardErrorPath": str(LOGS / "launchd_stderr.log"),
@@ -75,11 +83,12 @@ def install(hour: int, minute: int, model: str) -> int:
                    capture_output=True)  # ok if not loaded
     rc = subprocess.run(["launchctl", "bootstrap", _gui_target(), str(PLIST_PATH)]).returncode
     if rc == 0:
-        print(f"installed {LABEL}: daily at {hour:02d}:{minute:02d} local "
+        times = ", ".join(f"{h:02d}:{m:02d}" for h, m in FIRE_TIMES)
+        print(f"installed {LABEL}: fires daily at {times} local "
               f"(model={model})\nplist: {PLIST_PATH}\nlogs:  {LOGS}/launchd_*.log")
-        print("note: the Mac must be awake and you logged in at fire time; "
-              "`sudo pmset repeat wakeorpoweron MTWRFSU "
-              f"{hour:02d}:{max(minute - 5, 0):02d}:00` wakes it beforehand.")
+        print("note: the Mac must be awake and you logged in at fire times; "
+              "`sudo pmset repeat wakeorpoweron MTWRFSU 09:25:00` wakes it "
+              "for the morning tick.")
     else:
         print(f"launchctl bootstrap failed (rc={rc})", file=sys.stderr)
     return rc

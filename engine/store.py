@@ -429,6 +429,18 @@ class Store:
     def outcome_count(self) -> int:
         return int(self._db.execute("SELECT COUNT(*) AS n FROM outcomes").fetchone()["n"])
 
+    def trade_history(self, limit: int = 100) -> list[dict[str, Any]]:
+        """All decisions newest-first with their outcome (if labeled) — the
+        operator-facing history behind the briefing."""
+        rows = self._db.execute(
+            """SELECT d.*, o.exit_price, o.move_pct AS outcome_move_pct,
+                      o.pnl_usd, o.labeled_at
+               FROM decisions d LEFT JOIN outcomes o ON o.decision_id = d.id
+               ORDER BY d.id DESC LIMIT ?""",
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def labeled_decisions(self, limit: int = 20) -> list[dict[str, Any]]:
         rows = self._db.execute(
             """SELECT d.*, o.exit_price, o.move_pct AS outcome_move_pct,

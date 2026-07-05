@@ -31,6 +31,10 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("status", help="print the current context pack")
 
+    p_report = sub.add_parser("report", help="print the operator briefing")
+    p_report.add_argument("--write", action="store_true",
+                          help="also write reports/BRIEFING.md")
+
     p_close = sub.add_parser("close", help="close an open paper position")
     p_close.add_argument("symbol")
     p_close.add_argument("--price", type=float, required=True)
@@ -101,6 +105,16 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.cmd == "status":
             print(build_context_pack(cfg, store))
+            return 0
+        if args.cmd == "report":
+            from .briefing import build_briefing
+            text = build_briefing(cfg, store)
+            print(text)
+            if args.write:
+                out = launcher.REPO_ROOT / "reports" / "BRIEFING.md"
+                out.parent.mkdir(exist_ok=True)
+                out.write_text(text)
+                print(f"[written to {out}]")
             return 0
         if args.cmd == "close":
             result = store.close_position(args.symbol.upper(), args.price, args.notes)

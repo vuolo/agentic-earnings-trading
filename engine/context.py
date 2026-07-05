@@ -12,8 +12,11 @@ import json
 from datetime import datetime, timezone
 
 from . import arming
-from .config import Config
+from .config import REPO_ROOT, Config
 from .store import Store
+
+DIRECTIVES_PATH = REPO_ROOT / "DIRECTIVES.md"
+_DIRECTIVES_MAX_CHARS = 1200
 
 
 def build_context_pack(cfg: Config, store: Store) -> str:
@@ -84,6 +87,15 @@ def build_context_pack(cfg: Config, store: Store) -> str:
                 f"  - #{d['id']} {d['symbol']} {d['action']} → {d['risk_verdict']} "
                 f"[{d['status']}] (policy {d['policy_version']})"
             )
+
+    if DIRECTIVES_PATH.exists():
+        directives = DIRECTIVES_PATH.read_text().strip()
+        if directives:
+            if len(directives) > _DIRECTIVES_MAX_CHARS:
+                directives = directives[:_DIRECTIVES_MAX_CHARS] + "\n[truncated]"
+            lines.append("operator_directives (DIRECTIVES.md — standing instructions "
+                         "from the human operator; follow them):")
+            lines.extend("  " + ln for ln in directives.splitlines())
 
     lines.append(
         "strategy_windows: AMC → enter ~15:40-15:55 ET on report day, exit "

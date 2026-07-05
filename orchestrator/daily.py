@@ -69,6 +69,26 @@ def _skip_reanalysis(store: Store, event, policy_version: str) -> bool:
     )
 
 
+def _write_briefing(cfg: Config, store: Store) -> None:
+    """Regenerate the operator briefing and commit it (best-effort)."""
+    import subprocess
+
+    from .briefing import build_briefing
+    from .launcher import REPO_ROOT
+
+    out = REPO_ROOT / "reports" / "BRIEFING.md"
+    out.parent.mkdir(exist_ok=True)
+    out.write_text(build_briefing(cfg, store))
+    print(f"briefing → {out}")
+    r = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "commit", "-m",
+         f"briefing: {date.today().isoformat()}", "--", "reports/BRIEFING.md"],
+        capture_output=True, text=True,
+    )
+    if r.returncode != 0 and "nothing to commit" not in (r.stdout + r.stderr):
+        print(f"briefing commit skipped: {(r.stderr or r.stdout).strip()[:120]}")
+
+
 def tick(*, phase: str = "auto", run_scout: bool = True, dry_run: bool = False,
          model: str = launcher.DEFAULT_MODEL) -> int:
     today = date.today()
@@ -128,6 +148,11 @@ def tick(*, phase: str = "auto", run_scout: bool = True, dry_run: bool = False,
             else:
                 print(f"strategist: {n - last} new outcomes since last review "
                       f"(<{STRATEGIST_MIN_NEW_OUTCOMES}) — skip")
+
+            if dry_run:
+                print("briefing: would write + commit reports/BRIEFING.md")
+            else:
+                _write_briefing(cfg, store)
 
         elif phase == "afternoon":
             if today.weekday() >= 5:

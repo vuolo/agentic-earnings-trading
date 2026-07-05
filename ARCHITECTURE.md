@@ -265,3 +265,12 @@ Keep this section honest — dated entries only, from real runs.
   live-eligible event: TSM 2026-07-16 bmo (entry window 7/15 ~15:45 ET) —
   its 0.1.0 pass will be re-analyzed under v0.2.0 (pass-from-older-policy
   re-analysis rule in daily.py).
+- **2026-07-05** — **Backtest backfill complete** (Sonnet 5): 90 events, all
+  15 universe symbols × 6 quarters (2025-02 → 2026-06). Universe gap
+  (T-1 close → post-open): mean +1.77%, std 11.51%, up-rate 0.52, worst
+  −20.1% (COHR). Drift (post-open → close): mean −0.64%, up-rate 0.37 —
+  **the exit-at-open discipline is empirically right; holding the reaction
+  day destroys value on average**. Standouts: TSM bmo gap up-rate 0.83 /
+  std 2.39% / worst −1.66% (best risk-adjusted in universe; drift fades
+  6/6). Tail-risk names for $100–120 sizing: COHR (−20%), HPE (−15%),
+  ORCL (−14.5%).

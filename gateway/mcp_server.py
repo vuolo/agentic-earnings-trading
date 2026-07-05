@@ -248,6 +248,50 @@ def report_live_close(decision_id: int, exit_price: float, notes: str = "") -> s
 
 
 @mcp.tool()
+def compute_indicators(bars_json: str, benchmark_bars_json: str = "") -> str:
+    """Deterministic indicator computation (the server does the math, you
+    don't). Pass raw daily bars from get_equity_historicals (any JSON shape);
+    optionally pass benchmark bars (e.g. an index or SMH proxy) for relative
+    strength. Returns: rsi14, atr14_pct, realized_vol20_pct, volume_z20,
+    sma20/50 + trend, pct_from_high/low, rel_strength20_pct. Embed the result
+    VERBATIM in features_json under "computed"."""
+    from engine import indicators
+    try:
+        bars = indicators.parse_bars(bars_json)
+        bench = indicators.parse_bars(benchmark_bars_json) if benchmark_bars_json.strip() else None
+    except (ValueError, json.JSONDecodeError) as e:
+        return f"ERROR: {e}"
+    return json.dumps(indicators.compute(bars, bench), indent=1)
+
+
+@mcp.tool()
+def compute_implied_move(underlying_price: float, call_mid: float, put_mid: float) -> str:
+    """Deterministic implied-move computation from ATM straddle mids (nearest
+    expiry after the report). Embed the result verbatim in features_json
+    under "implied_move"."""
+    from engine import indicators
+    try:
+        return json.dumps(indicators.implied_move(underlying_price, call_mid, put_mid))
+    except ValueError as e:
+        return f"ERROR: {e}"
+
+
+@mcp.tool()
+def get_ml_prediction(features_json: str, conviction: float = -1.0) -> str:
+    """The ML sidecar's read on your feature snapshot: P(post-event move up).
+    ADVISORY while the dataset is small — weigh it, don't obey it; record its
+    output in your features_json under "ml_advisory". Reports honestly when
+    untrained."""
+    from engine import ml
+    try:
+        feats = json.loads(features_json)
+    except json.JSONDecodeError:
+        return "ERROR: features_json is not valid JSON"
+    conv = conviction if 0.0 <= conviction <= 1.0 else None
+    return json.dumps(ml.predict(feats, conv), indent=1)
+
+
+@mcp.tool()
 def report_account_snapshot(
     equity_usd: float, cash_usd: float, buying_power_usd: float
 ) -> str:

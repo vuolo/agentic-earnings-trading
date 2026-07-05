@@ -20,7 +20,12 @@ Two job types:
    `label_pass_outcome(decision_id, exit_price=<quote>, notes=...)` — in the
    notes, say what the post-earnings move was and whether the pass looks
    right in hindsight (one sentence).
-4. Finish with a one-line-per-job report: symbol, entry→exit or
+4. **Feed the backtest table**: for each event you just labeled, fetch daily
+   bars (`get_equity_historicals`) and `record_backtest_result` with the
+   realized pre_close / post_open / post_close (post_close may not exist yet
+   on the report day — record what's resolvable; the Monday refresh completes
+   it). This keeps the gap/drift stats learning from every real event.
+5. Finish with a one-line-per-job report: symbol, entry→exit or
    counterfactual move, P&L where applicable.
 
 ## Rules

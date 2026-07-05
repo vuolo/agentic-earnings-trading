@@ -72,12 +72,22 @@ def build_context_pack(cfg: Config, store: Store) -> str:
         lines.append("open_paper_positions: (none)")
 
     events = store.upcoming_events(days=14)
-    if events:
+    tradeable = [e for e in events if not cfg.universe or e["symbol"] in cfg.universe]
+    macro = [e for e in events if e["symbol"] in cfg.macro_watch]
+    if tradeable:
         lines.append("upcoming_earnings (14d):")
-        for e in events:
+        for e in tradeable:
             lines.append(f"  - {e['symbol']} {e['report_date']} {e['timing']}")
     else:
         lines.append("upcoming_earnings (14d): (none recorded — scout run needed)")
+    if macro:
+        lines.append("macro_events (context only — NOT tradeable):")
+        for e in macro:
+            lines.append(f"  - {e['symbol']} {e['report_date']} {e['timing']}")
+    lines.append(f"macro_watch: {', '.join(cfg.macro_watch)}")
+
+    from . import ml
+    lines.append(f"ml_sidecar: {ml.brief_status(store)}")
 
     recent = store.recent_decisions(limit=5)
     if recent:

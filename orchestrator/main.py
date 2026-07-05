@@ -23,11 +23,11 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_scout = sub.add_parser("scout", help="sync upcoming earnings into the store")
-    p_scout.add_argument("--model", default=launcher.DEFAULT_MODEL)
+    p_scout.add_argument("--model", default=None)
 
     p_an = sub.add_parser("analyze", help="run the analyst for one symbol")
     p_an.add_argument("symbol")
-    p_an.add_argument("--model", default=launcher.DEFAULT_MODEL)
+    p_an.add_argument("--model", default=None)
 
     sub.add_parser("status", help="print the current context pack")
 
@@ -56,7 +56,10 @@ def main(argv: list[str] | None = None) -> int:
 
     p_bt = sub.add_parser("backtest", help="backfill historical earnings reactions")
     p_bt.add_argument("symbol", nargs="?", default="")
-    p_bt.add_argument("--model", default=launcher.DEFAULT_MODEL)
+    p_bt.add_argument("--model", default=None)
+
+    sub.add_parser("ml-train", help="(re)train the ML sidecar from the dataset")
+    sub.add_parser("monitor", help="run the account monitor/reconciliation agent")
 
     args = parser.parse_args(argv)
 
@@ -69,6 +72,19 @@ def main(argv: list[str] | None = None) -> int:
         target = args.symbol.upper() if args.symbol else \
             "every symbol in the universe (see the context pack)"
         return launcher.run_role("backtester", symbol=target, model=args.model)
+    if args.cmd == "monitor":
+        return launcher.run_role("monitor")
+    if args.cmd == "ml-train":
+        import json as _json
+
+        from engine import ml
+        cfg0 = Config.from_env()
+        store0 = Store(cfg0.db_path)
+        try:
+            print(_json.dumps(ml.train(store0), indent=1))
+        finally:
+            store0.close()
+        return 0
 
     if args.cmd == "arm-live":
         from engine import arming

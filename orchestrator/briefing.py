@@ -128,16 +128,40 @@ def build_briefing(cfg: Config, store: Store) -> str:
     if events and planned == 0:
         md.append("- Events tracked but none enterable (timing/weekend constraints).")
 
+    md += ["", "## System health"]
+    for ph in ("morning", "afternoon", "evening"):
+        last = store.meta_get(f"tick_{ph}_last", "")
+        md.append(f"- {ph} tick last ran: {last or 'never'}")
+    err = store.meta_get("last_tick_error", "")
+    if err:
+        md.append(f"- ⚠️ **Last tick error**: {err}")
+    from engine import ml as _ml
+    md.append(f"- ML sidecar: {_ml.brief_status(store)}")
+    if arm and snap:
+        try:
+            import json as _json
+            eq = float(_json.loads(snap).get("equity_usd", 0))
+            if eq > 0 and eq >= arm.daily_cap_usd * 1.5:
+                md.append(f"- 💡 Equity ({_fmt_money(eq)}) has outgrown the live caps "
+                          f"({_fmt_money(arm.per_position_cap_usd)}/pos, "
+                          f"{_fmt_money(arm.daily_cap_usd)}/day) — consider re-arming "
+                          "with higher caps to keep stacking.")
+        except (ValueError, TypeError):
+            pass
+
     md += [
         "",
         "## Longer-term roadmap status",
         f"- Dataset: {perf['closed_trades']} closed trades + {perf['labeled_passes']} "
         f"labeled passes | backtests: {store.backtest_summary()['events']} historical events",
-        f"- **ML sidecar (Phase 4)**: trains when ~{ML_TRAINING_THRESHOLD} labeled trade "
-        "outcomes exist — until then every decision/pass/outcome is training data",
-        "- Phase 2 (deterministic feature/indicator engine): NEXT BUILD — moves implied-move/"
-        "indicator math from agent arithmetic into tested code",
-        "- Phase 5b (live options for bearish leg): after Phase 2",
+        f"- **ML sidecar (Phase 4)**: pipeline BUILT and self-activating — trains "
+        f"automatically each morning; advisory until ~{ML_TRAINING_THRESHOLD} labeled rows",
+        "- Phase 2 (deterministic indicators): BUILT — compute_indicators / "
+        "compute_implied_move run server-side",
+        "- Phase 5b (live options for bearish leg): capital-constrained at current "
+        "account size (a single earnings-week put costs more than the per-position "
+        "cap); bearish stays a paper leg until the account can carry defined-risk "
+        "options",
         "- Strategist: reviews policy after every 3 new labeled outcomes (auto)",
         "",
         "## Steering",

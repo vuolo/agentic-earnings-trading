@@ -44,6 +44,8 @@ class Role:
     rb_tools: tuple[str, ...]
     gw_tools: tuple[str, ...]
     kickoff: str
+    builtin_tools: tuple[str, ...] = ()   # Claude Code builtins, e.g. WebSearch
+    model: str | None = None              # role default; explicit --model wins
 
 
 ROLES: dict[str, Role] = {
@@ -59,7 +61,11 @@ ROLES: dict[str, Role] = {
     "analyst": Role(
         prompt_file="analyst.md",
         rb_tools=ANALYST_RB_TOOLS,
-        gw_tools=("get_context_pack", "submit_decision", "get_backtest_summary"),
+        gw_tools=(
+            "get_context_pack", "submit_decision", "get_backtest_summary",
+            "compute_indicators", "compute_implied_move", "get_ml_prediction",
+        ),
+        builtin_tools=("WebSearch",),  # news/sentiment
         kickoff=(
             "Analyze the upcoming earnings event for {symbol} and submit a "
             "decision per your instructions. Start by calling get_context_pack."
@@ -67,11 +73,25 @@ ROLES: dict[str, Role] = {
     ),
     "labeler": Role(
         prompt_file="labeler.md",
-        rb_tools=("get_equity_quotes",),
-        gw_tools=("get_context_pack", "close_paper_position", "label_pass_outcome"),
+        rb_tools=("get_equity_quotes", "get_equity_historicals"),
+        gw_tools=(
+            "get_context_pack", "close_paper_position", "label_pass_outcome",
+            "record_backtest_result",
+        ),
         kickoff=(
             "Work exactly these labeling jobs, then stop — {symbol}. "
             "Start by calling get_context_pack."
+        ),
+    ),
+    # Cheap daily account/position reconciliation — no order tools.
+    "monitor": Role(
+        prompt_file="monitor.md",
+        rb_tools=("get_accounts", "get_portfolio", "get_equity_positions"),
+        gw_tools=("get_context_pack", "report_account_snapshot"),
+        model="claude-haiku-4-5-20251001",
+        kickoff=(
+            "Report the current account snapshot and reconcile broker "
+            "positions against the context pack per your instructions."
         ),
     ),
     # The ONLY role that may carry order tools, and the tick launches it only
@@ -152,11 +172,13 @@ def _write_mcp_config(policy_version: str) -> Path:
     return Path(path)
 
 
-def run_role(role_name: str, *, symbol: str | None = None, model: str = DEFAULT_MODEL) -> int:
+def run_role(role_name: str, *, symbol: str | None = None,
+             model: str | None = None) -> int:
     if shutil.which("claude") is None:
         print("error: `claude` CLI not found on PATH.", file=sys.stderr)
         return 127
     role = ROLES[role_name]
+    model = model or role.model or DEFAULT_MODEL
     if "{symbol}" in role.kickoff and not symbol:
         print(f"error: role {role_name!r} requires a symbol.", file=sys.stderr)
         return 2
@@ -165,9 +187,11 @@ def run_role(role_name: str, *, symbol: str | None = None, model: str = DEFAULT_
     mission = (PROMPTS / role.prompt_file).read_text() + "\n\n---\n\n" + policy
     kickoff = role.kickoff.format(symbol=symbol or "")
 
-    allowed = [f"mcp__robinhood-trading__{t}" for t in role.rb_tools] + [
-        f"mcp__earnings__{t}" for t in role.gw_tools
-    ]
+    allowed = (
+        [f"mcp__robinhood-trading__{t}" for t in role.rb_tools]
+        + [f"mcp__earnings__{t}" for t in role.gw_tools]
+        + list(role.builtin_tools)
+    )
     mcp_config = _write_mcp_config(version)
     cmd = [
         "claude", "-p", kickoff,

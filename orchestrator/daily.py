@@ -17,6 +17,7 @@ needed. launchd fires three times per trading day (orchestrator/schedule.py):
 from __future__ import annotations
 
 import argparse
+import json
 from datetime import date, datetime, timedelta
 
 from engine.arming import arm_status
@@ -90,23 +91,79 @@ def _write_briefing(cfg: Config, store: Store) -> None:
 
 
 def tick(*, phase: str = "auto", run_scout: bool = True, dry_run: bool = False,
-         model: str = launcher.DEFAULT_MODEL) -> int:
+         model: str | None = None) -> int:
     today = date.today()
     if phase == "auto":
         phase = resolve_phase(datetime.now())
-    print(f"=== {phase} tick {today.isoformat()} (model={model}"
+    print(f"=== {phase} tick {today.isoformat()} (model={model or launcher.DEFAULT_MODEL}"
           + (", DRY RUN" if dry_run else "") + ") ===")
 
     cfg = Config.from_env()
     store = Store(cfg.db_path)
     arm, arm_why = arm_status()
     try:
+        _phase_body(phase=phase, run_scout=run_scout, dry_run=dry_run,
+                    model=model, today=today, cfg=cfg, store=store,
+                    arm=arm, arm_why=arm_why)
+        if not dry_run:
+            store.meta_set(f"tick_{phase}_last",
+                           datetime.now().isoformat(timespec="seconds"))
+            store.meta_set("last_tick_error", "")
+    except Exception as e:
+        msg = f"{phase} tick {today.isoformat()}: {type(e).__name__}: {e}"
+        try:
+            store.meta_set("last_tick_error", msg)
+        except Exception:
+            pass
+        _notify(f"earnings tick FAILED: {msg[:120]}")
+        raise
+    finally:
+        store.close()
+    print("tick complete")
+    return 0
+
+
+def _notify(text: str) -> None:
+    """Best-effort macOS notification so tick failures aren't silent."""
+    import subprocess
+    try:
+        subprocess.run(
+            ["osascript", "-e",
+             f'display notification {json.dumps(text)} with title "agentic-earnings-trading"'],
+            capture_output=True, timeout=10,
+        )
+    except Exception:
+        pass
+
+
+def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm_why):
+    if True:  # keep original indentation depth for the phase blocks below
         if phase == "morning":
+            if dry_run:
+                print("monitor: would report account snapshot + reconcile")
+            else:
+                print(f"monitor exit {launcher.run_role('monitor')}")
+
             if run_scout:
                 if dry_run:
                     print("scout: would run")
                 else:
                     print(f"scout exit {launcher.run_role('scout', model=model)}")
+
+            # Monday: refresh backtests for events that just happened, so the
+            # realized rows (incl. post_close) stay complete.
+            if today.weekday() == 0:
+                week_ago = (today - timedelta(days=7)).isoformat()
+                recent = store._db.execute(
+                    "SELECT DISTINCT symbol FROM events WHERE report_date >= ? "
+                    "AND report_date < ?", (week_ago, today.isoformat()),
+                ).fetchall()
+                if recent:
+                    syms = ", ".join(r["symbol"] for r in recent)
+                    print(f"backtester: refreshing realized events for {syms}")
+                    if not dry_run:
+                        print(f"backtester exit "
+                              f"{launcher.run_role('backtester', symbol=syms, model=model)}")
 
             due = store.due_closes(today.isoformat())
             passes = store.due_pass_labels(today.isoformat())
@@ -150,8 +207,16 @@ def tick(*, phase: str = "auto", run_scout: bool = True, dry_run: bool = False,
                       f"(<{STRATEGIST_MIN_NEW_OUTCOMES}) — skip")
 
             if dry_run:
+                print("ml: would attempt training (auto-activates at threshold)")
                 print("briefing: would write + commit reports/BRIEFING.md")
             else:
+                from engine import ml
+                st = ml.train(store)
+                if st.get("trained"):
+                    print(f"ml: trained on {st['rows']} rows, CV accuracy "
+                          f"{st['cv_accuracy']:.0%}")
+                else:
+                    print(f"ml: {st.get('reason', 'skipped')}")
                 _write_briefing(cfg, store)
 
         elif phase == "afternoon":
@@ -208,12 +273,7 @@ def tick(*, phase: str = "auto", run_scout: bool = True, dry_run: bool = False,
             if not dry_run:
                 print(f"executor exit {launcher.run_role('executor', symbol=job, model=model)}")
         else:
-            print(f"unknown phase {phase!r}")
-            return 2
-    finally:
-        store.close()
-    print("tick complete")
-    return 0
+            raise ValueError(f"unknown phase {phase!r}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -222,7 +282,7 @@ def main(argv: list[str] | None = None) -> int:
                         choices=["auto", "morning", "afternoon", "evening"])
     parser.add_argument("--no-scout", action="store_true", help="skip the scout run")
     parser.add_argument("--dry-run", action="store_true", help="print plan, launch no agents")
-    parser.add_argument("--model", default=launcher.DEFAULT_MODEL)
+    parser.add_argument("--model", default=None)
     args = parser.parse_args(argv)
     return tick(phase=args.phase, run_scout=not args.no_scout,
                 dry_run=args.dry_run, model=args.model)

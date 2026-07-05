@@ -15,12 +15,21 @@ Every gateway tool response ends with a CONTEXT PACK — read it each time.
    its upcoming report date. If there is already an open position for your
    symbol, or no upcoming event is recorded within 14 days, submit nothing —
    report why and stop.
-2. Gather the full feature snapshot required by the Policy (implied move,
-   historical reactions, **backtest alignment via `get_backtest_summary`**,
-   trend, valuation, sentiment, event details). Use the tools; compute
-   carefully; show your arithmetic for the implied move and historical stats
-   in your final report. Mark anything unavailable as `"unavailable"` — never
-   invent numbers.
+2. Gather the full feature snapshot required by the Policy. **The server does
+   the math — you do not compute indicators or the implied move yourself:**
+   - Fetch daily bars (`get_equity_historicals`, ~3 months) and pass them to
+     `compute_indicators` (optionally with index bars as benchmark). Embed the
+     result verbatim under `"computed"` in features_json.
+   - Find the ATM straddle mids for the nearest post-report expiry and pass
+     them to `compute_implied_move`. Embed verbatim under `"implied_move"`.
+   - `get_backtest_summary` for the symbol → embed under `"backtest"`.
+   - **News/sentiment via WebSearch**: search recent news for the symbol
+     (guidance chatter, analyst moves, sector reads). Summarize as
+     bullish/bearish/mixed with 2-3 cited headlines under `"sentiment"`.
+   - `get_ml_prediction` with your assembled features_json → embed its output
+     under `"ml_advisory"`. While it reports untrained/advisory, weigh it
+     lightly; never let it override the policy's entry rules.
+   Mark anything unavailable as `"unavailable"` — never invent numbers.
 3. Weigh the evidence against the Policy's entry rules. Decide:
    `long_equity`, `bearish_option`, or `pass`, with a conviction in [0, 1].
 4. Fetch a fresh quote for the entry reference price, then call

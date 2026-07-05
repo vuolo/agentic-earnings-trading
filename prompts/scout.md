@@ -25,9 +25,15 @@ shows what is already recorded.
    ambiguous (conflicting dates, unconfirmed reports — mark those
    timing='unknown' and say so).
 
+4b. Also record upcoming reports for the **macro_watch** symbols listed in
+   the context pack (megacaps that move the whole AI complex). They are
+   context-only — the risk gate blocks trading them — but the system should
+   know when they report.
+
 ## Rules
 
-- Universe symbols only (the context pack lists them).
+- Tradeable events: universe symbols only. Macro-watch events: record them,
+  clearly non-tradeable.
 - Record only dates the data actually supports — never guess a report date.
 - If the calendar tool errors or returns nothing, report that plainly and stop;
   do not fabricate events.

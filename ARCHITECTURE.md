@@ -174,11 +174,14 @@ be sliced by policy version. Change the policy → bump the version.
 - **Phase 1 — Live agent loop.** Run scout + analyst against real market data
   daily; accumulate decisions across a few earnings cycles; manual `close` /
   labeling via CLI. Verify headless OAuth reuse of the Robinhood MCP.
-- **Phase 2 — Deterministic feature engine.** Move feature computation into
-  `engine/features.py`: historical earnings reaction distributions (last 8–12
-  quarters), implied move from ATM straddle vs. realized-move stats, trend /
-  momentum indicators. Agents consume computed features instead of assembling
-  them. Automated post-event **labeler** run.
+- **Phase 2 — Deterministic feature engine (built 2026-07-05).**
+  `engine/indicators.py` (RSI-14, ATR%, realized vol, volume z-score, SMA
+  trend, distance from high/low, relative strength, implied move) exposed via
+  the gateway's `compute_indicators` / `compute_implied_move` — agents pass
+  raw bars, the server does the math, outputs embed verbatim in snapshots
+  (standard keys the ML trains on). Analyst sentiment now uses the WebSearch
+  builtin with cited headlines. Labeler feeds realized events back into the
+  backtests table; Monday morning refresh completes them.
 - **Phase 3 — Scheduler (built 2026-07-05).** `orchestrator/daily.py` is a
   deterministic tick: scout → labeler (closes positions whose report date has
   passed) → analyst (events entering the decision window: T-1 for bmo/unknown,
@@ -188,10 +191,14 @@ be sliced by policy version. Change the policy → bump the version.
   are live). Aqua-session-only: the tick needs the user's `claude` login and
   Robinhood OAuth. PATH is baked into the plist (stake repo lesson: launchd
   strips PATH and dud runs follow).
-- **Phase 4 — ML sidecar.** Train on the decisions⋈outcomes table (features →
-  post-earnings move / P&L). Model output becomes a feature in the context
-  pack first (advisory), then the primary signal with Claude as orchestrator
-  and sanity layer.
+- **Phase 4 — ML sidecar (pipeline built 2026-07-05, self-activating).**
+  `engine/ml.py`: logistic regression on standardized snapshot features →
+  P(post-event move up), CV-scored, saved as plain JSON (pure-Python
+  inference, no pickle). The morning tick retrains daily — a no-op below 25
+  usable labeled rows, ADVISORY until ~50. `get_ml_prediction` is in the
+  analyst's toolset from day one and reports its own untrained state
+  honestly. Graduation from advisory to primary signal is a strategist +
+  operator decision based on CV accuracy vs. base rate.
 - **Phase 5a — Live execution scaffolding (built 2026-07-05, DISARMED).**
   Executor role (equity only: buy limit with 1% price guard, sell-to-close,
   review-before-place, real fills reported back), `pending_live → open_live →

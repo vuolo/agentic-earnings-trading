@@ -19,6 +19,10 @@ DEFAULT_UNIVERSE = (
     "VRT", "ANET", "MRVL", "COHR", "CRDO", "ALAB", "ORCL",
 )
 
+# Non-tradeable megacaps whose earnings move the whole AI complex — tracked
+# for macro context only (the risk gate blocks trading them regardless).
+DEFAULT_MACRO_WATCH = ("MSFT", "GOOGL", "META", "AMZN", "AAPL")
+
 
 @dataclass(frozen=True)
 class RiskLimits:
@@ -33,6 +37,7 @@ class Config:
     db_path: Path = REPO_ROOT / "datasets" / "earnings.sqlite3"
     policy_version: str = "0.1.0"
     universe: tuple[str, ...] = DEFAULT_UNIVERSE
+    macro_watch: tuple[str, ...] = DEFAULT_MACRO_WATCH
     limits: RiskLimits = field(default_factory=RiskLimits)
 
     @classmethod
@@ -42,6 +47,11 @@ class Config:
         if env.get("EARNINGS_UNIVERSE"):
             universe = tuple(
                 s.strip().upper() for s in env["EARNINGS_UNIVERSE"].split(",") if s.strip()
+            )
+        macro_watch = DEFAULT_MACRO_WATCH
+        if env.get("EARNINGS_MACRO_WATCH"):
+            macro_watch = tuple(
+                s.strip().upper() for s in env["EARNINGS_MACRO_WATCH"].split(",") if s.strip()
             )
         limits = RiskLimits(
             max_position_usd=float(env.get("EARNINGS_MAX_POSITION_USD", 1_000.0)),
@@ -58,5 +68,6 @@ class Config:
             db_path=Path(env.get("EARNINGS_DB", str(cls.db_path))),
             policy_version=env.get("EARNINGS_POLICY_VERSION", "0.1.0"),
             universe=universe,
+            macro_watch=macro_watch,
             limits=limits,
         )

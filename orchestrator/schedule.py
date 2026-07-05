@@ -45,7 +45,7 @@ def _path_env() -> str:
 
 # Market-phase fire times (local = ET): morning exits just after the open,
 # afternoon entries just before the close, evening AMC exits in after-hours.
-FIRE_TIMES = ((9, 31), (15, 40), (16, 50))
+FIRE_TIMES = ((9, 31), (15, 40), (16, 20), (16, 50))  # two evening fires: catch early AMC prints fast; idempotent
 
 
 def _plist(hour: int, minute: int, model: str) -> dict:

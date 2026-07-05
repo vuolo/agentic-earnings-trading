@@ -164,7 +164,10 @@ agentic-earnings-trading/
 
 Keep this section honest — dated entries only, from real runs.
 
-- **2026-07-05** — Repo scaffolded; risk gate + store covered by tests.
-  Robinhood MCP OAuth established interactively in Claude Code. Headless
-  (`claude -p`) reuse of that OAuth is **assumed but not yet verified** — first
-  Phase 1 task.
+- **2026-07-05** — Repo scaffolded; risk gate + store covered by 17 passing
+  tests; `status` CLI and gateway server verified locally.
+- **2026-07-05** — **Headless OAuth reuse verified**: `claude -p` with a
+  strict MCP config pointing at the Robinhood trading URL reused the OAuth
+  established interactively in Claude Code (`get_earnings_calendar` returned
+  28 entries, Haiku 4.5, one tool call). The orchestrator's launch path is
+  viable as designed.

@@ -74,12 +74,13 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
 - **BMO (overnight) entries need more**: conviction ≥ **0.70** AND the worst
   historical gap in the name must not exceed ~2× your intended size's
   tolerable loss. State this check in the thesis.
-- Direction: bullish → `long_equity`. Bearish → `bearish_option` (paper leg).
-  Equity shorting is IMPOSSIBLE on this setup — verified: the designated
-  account is cash (cash accounts cannot short) and the API rejects fractional
-  short sells — and live options need an option-level upgrade on the Agentic
-  account plus enough capital for defined-risk spreads. The dataset still
-  learns direction-calling from bearish paper legs.
+- Direction: bullish → `long_equity`. Bearish → `bearish_option` — a
+  **paper-only dataset leg**: this is a STOCKS-ONLY strategy by operator
+  decision (2026-07-05). Equity shorting is impossible on this setup
+  (verified: cash account; the API rejects shorts), and options — although
+  the Agentic account now has option level 2 — are deliberately not traded.
+  Bearish paper legs exist so the dataset learns direction-calling; live
+  capital only ever goes long equity.
 - No specific, defensible edge → submit `pass` with the full snapshot and a
   reference `entry_price`. Passes are dataset rows — never skip submitting.
 

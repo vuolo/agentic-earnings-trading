@@ -162,10 +162,9 @@ def build_briefing(cfg: Config, store: Store) -> str:
         f"automatically each morning; advisory until ~{ML_TRAINING_THRESHOLD} labeled rows",
         "- Phase 2 (deterministic indicators): BUILT — compute_indicators / "
         "compute_implied_move run server-side",
-        "- Phase 5b (live options for bearish leg): capital-constrained at current "
-        "account size (a single earnings-week put costs more than the per-position "
-        "cap); bearish stays a paper leg until the account can carry defined-risk "
-        "options",
+        "- Strategy is STOCKS-ONLY (operator decision): live capital goes long "
+        "equity; bearish theses are paper-only dataset legs (options L2 exists "
+        "on the account but is deliberately unused)",
         "- Strategist: reviews policy after every 3 new labeled outcomes (auto)",
         "",
         "## Steering",

@@ -214,9 +214,11 @@ be sliced by policy version. Change the policy → bump the version.
   closed_live` lifecycle, arm switch + arm-aware risk gate. Bearish stays a
   paper leg until live options execution exists. Arming is the operator's
   single release lever; off by default, forever.
-- **Phase 5b — Live options execution.** `place_option_order` for the bearish
-  leg (long puts / defined-risk spreads) with real option P&L; retire the
-  delta-one proxy.
+- **Phase 5b — Live options execution (SHELVED by operator decision,
+  2026-07-05).** The strategy is stocks-only: live capital goes long equity,
+  bearish theses stay paper-only dataset legs. The Agentic account has option
+  level 2 (upgraded 2026-07-05), so this phase is unblocked if the operator
+  ever changes the strategy — but it is not on the roadmap.
 
 ## 7. Repo layout
 

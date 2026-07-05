@@ -303,6 +303,18 @@ class Store:
             {"today": today},
         ).fetchall()
 
+    def live_closes_today(self) -> int:
+        """Live positions closed today (UTC) — the cash-account GFV guard:
+        proceeds from a same-day sale are unsettled until T+1."""
+        row = self._db.execute(
+            """SELECT COUNT(*) AS n FROM outcomes o
+               JOIN decisions d ON d.id = o.decision_id
+               WHERE d.status = 'closed_live'
+                 AND substr(o.labeled_at, 1, 10) = ?""",
+            (_today(),),
+        ).fetchone()
+        return int(row["n"])
+
     def day_trades_last_5d(self) -> int:
         """Same-day live round trips in the trailing week — our own PDT
         counter (accounts under $25k get 3 day trades per 5 trading days)."""

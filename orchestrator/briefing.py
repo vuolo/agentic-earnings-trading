@@ -18,7 +18,7 @@ from engine.arming import arm_status
 from engine.config import Config
 from engine.store import Store
 
-from .daily import MAX_DAY_TRADES_PER_5D, analyst_due, next_trading_day
+from .daily import analyst_due, next_trading_day
 
 ML_TRAINING_THRESHOLD = 50  # labeled trade outcomes before a sidecar model is worth fitting
 
@@ -57,8 +57,12 @@ def build_briefing(cfg: Config, store: Store) -> str:
                   f"buying power {_fmt_money(float(s.get('buying_power_usd', 0)))}")
     else:
         md.append("- Account: no snapshot yet (first executor run reports it)")
-    md.append(f"- PDT: {store.day_trades_last_5d()}/{MAX_DAY_TRADES_PER_5D} same-day live "
-              f"round trips used (trailing week)")
+    acct = store.meta_get("account_number", "")
+    if acct:
+        md.append(f"- Designated account: ••••{acct[-4:]} ('Agentic', cash — no PDT; "
+                  "T+1 settlement with GFV guard on same-day exits)")
+    md.append(f"- Live closes today: {store.live_closes_today()} | "
+              f"same-day round trips this week: {store.day_trades_last_5d()}")
     md.append(f"- Today's new exposure: {_fmt_money(store.today_new_exposure())}")
 
     md += ["", "## Open positions"]

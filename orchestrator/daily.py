@@ -27,12 +27,25 @@ from engine.store import Store
 from . import launcher
 
 STRATEGIST_MIN_NEW_OUTCOMES = 3
-MAX_DAY_TRADES_PER_5D = 3  # PDT rule for accounts under $25k
+
+# NYSE full-close holidays 2026. Half days (2026-11-27, 2026-12-24) close at
+# 13:00 — our 15:40 entry window doesn't exist, so treat them as non-entry too.
+MARKET_HOLIDAYS = {
+    "2026-01-01", "2026-01-19", "2026-02-16", "2026-04-03", "2026-05-25",
+    "2026-06-19", "2026-07-03", "2026-09-07", "2026-11-26", "2026-12-25",
+}
+HALF_DAYS = {"2026-11-27", "2026-12-24"}
+
+
+def is_trading_day(d: date, *, full_session: bool = False) -> bool:
+    if d.weekday() >= 5 or d.isoformat() in MARKET_HOLIDAYS:
+        return False
+    return not (full_session and d.isoformat() in HALF_DAYS)
 
 
 def next_trading_day(d: date) -> date:
     nxt = d + timedelta(days=1)
-    while nxt.weekday() >= 5:
+    while not is_trading_day(nxt):
         nxt += timedelta(days=1)
     return nxt
 
@@ -41,8 +54,9 @@ def analyst_due(report_date: str, timing: str, today: date) -> bool:
     """Decision window (afternoon tick): AMC events are decided and entered on
     the report day itself (report lands after the close). BMO/unknown events
     are decided the prior trading day (entry T-1 near close, report before the
-    next open). Weekends: markets closed, nothing is due."""
-    if today.weekday() >= 5:
+    next open). Non-trading days (and half days, whose 13:00 close removes our
+    entry window): nothing is due."""
+    if not is_trading_day(today, full_session=True):
         return False
     d = date.fromisoformat(report_date)
     if timing == "amc":
@@ -220,9 +234,9 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                 _write_briefing(cfg, store)
 
         elif phase == "afternoon":
-            if today.weekday() >= 5:
-                print("weekend — no entries; done")
-                return 0
+            if not is_trading_day(today, full_session=True):
+                print("market closed (weekend/holiday/half-day) — no entries; done")
+                return
             ran = 0
             for e in store.upcoming_events(days=5):
                 if not analyst_due(e["report_date"], e["timing"], today):
@@ -255,21 +269,25 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
             candidates = store.due_amc_same_day_closes(today.isoformat())
             if not candidates:
                 print("executor: no same-day AMC exits to consider")
-                return 0
-            used = store.day_trades_last_5d()
-            if used + len(candidates) > MAX_DAY_TRADES_PER_5D:
-                print(f"executor: {len(candidates)} AMC exit(s) available but PDT "
-                      f"budget is {used}/{MAX_DAY_TRADES_PER_5D} — holding to the "
-                      "next open instead (morning tick will exit)")
-                return 0
+                return
+            # Cash-account GFV guard: if today's entry was funded by today's
+            # sale proceeds (a live close happened earlier today), selling it
+            # again today would be a good-faith violation. Ride to the open —
+            # the proceeds settle T+1 morning and the exit is clean.
+            if store.live_closes_today():
+                print(f"executor: {len(candidates)} AMC exit(s) available but a live "
+                      "close already happened today — same-day re-sale of proceeds "
+                      "risks a good-faith violation; holding to the next open")
+                return
             if not arm:
                 print(f"executor: same-day exits due but {arm_why} — positions "
                       "ride to the next open")
-                return 0
-            job = ("sell to close in after-hours (extended-hours order; "
+                return
+            job = ("sell to close in after-hours (extended-hours LIMIT, whole "
+                   "shares only — skip any position with a fractional part; "
                    "decision_id symbol): "
                    + ", ".join(f"#{r['id']} {r['symbol']}" for r in candidates))
-            print(f"executor (ARMED until {arm.expires}, PDT {used}/{MAX_DAY_TRADES_PER_5D}): {job}")
+            print(f"executor (ARMED until {arm.expires}): {job}")
             if not dry_run:
                 print(f"executor exit {launcher.run_role('executor', symbol=job, model=model)}")
         else:

@@ -17,6 +17,20 @@ def test_next_trading_day_skips_weekend():
     assert next_trading_day(WED) == date(2026, 7, 16)
 
 
+def test_holidays_are_not_trading_days():
+    from orchestrator.daily import is_trading_day
+    assert not is_trading_day(date(2026, 9, 7))    # Labor Day
+    assert not is_trading_day(date(2026, 7, 3))    # July 4th observed
+    assert is_trading_day(date(2026, 11, 27))                       # half day trades...
+    assert not is_trading_day(date(2026, 11, 27), full_session=True)  # ...but no entries
+    # Friday 9/4 before Labor Day Monday: next trading day is Tuesday 9/8
+    assert next_trading_day(date(2026, 9, 4)) == date(2026, 9, 8)
+    # A bmo report on Tue 9/8 → entry due Friday 9/4
+    assert analyst_due("2026-09-08", "bmo", date(2026, 9, 4))
+    # Nothing due on the holiday itself
+    assert not analyst_due("2026-09-08", "bmo", date(2026, 9, 7))
+
+
 def test_bmo_due_prior_trading_day():
     assert analyst_due("2026-07-16", "bmo", WED)       # entry T-1 close
     assert not analyst_due("2026-07-15", "bmo", WED)   # report already imminent
@@ -106,8 +120,10 @@ def test_decisions_for_event(store):
 def test_day_trades_counter(store):
     did = _open_position(store, "AMD", "2026-07-01", timing="amc", status="open_live")
     assert store.day_trades_last_5d() == 0
+    assert store.live_closes_today() == 0
     store.close_live(did, 105.0)  # same-day round trip (created + labeled now)
     assert store.day_trades_last_5d() == 1
+    assert store.live_closes_today() == 1  # GFV guard input
 
 
 def test_backtest_upsert_and_summary(store):

@@ -41,10 +41,19 @@ def build_context_pack(cfg: Config, store: Store) -> str:
         f"risk: per-position cap ${limits.max_position_usd:,.0f} | "
         f"daily new-exposure ${used:,.2f} used of ${limits.max_daily_new_exposure_usd:,.0f} | "
         f"open positions {len(open_pos)}/{limits.max_open_positions}",
-        f"pdt: {store.day_trades_last_5d()}/3 same-day live round trips used "
-        "(trailing week — 4th one is blocked for accounts under $25k)",
+        "settlement: designated account is CASH (no PDT) — T+1 settlement; "
+        f"live closes today: {store.live_closes_today()} (same-day re-sale of "
+        "sale-proceeds-funded entries = good-faith violation; the evening tick "
+        "guards this)",
         f"universe: {', '.join(cfg.universe) if cfg.universe else '(unrestricted)'}",
     ]
+
+    acct = store.meta_get("account_number", "")
+    if acct:
+        lines.append(
+            f"designated_account: {acct} (nickname 'Agentic', cash, "
+            "agentic_allowed — the ONLY account order tools may use)"
+        )
 
     snap = store.meta_get("account_snapshot", "")
     if snap:
@@ -109,9 +118,11 @@ def build_context_pack(cfg: Config, store: Store) -> str:
 
     lines.append(
         "strategy_windows: AMC → enter ~15:40-15:55 ET on report day, exit "
-        "same-day after-hours only if the orchestrator authorized it (PDT), "
-        "else next open. BMO → enter near close the prior trading day, exit "
-        "at the post-report open."
+        "same-day after-hours only when the orchestrator authorizes it "
+        "(GFV guard; whole shares only in extended hours), else next open. "
+        "BMO → enter near close the prior trading day, exit at the "
+        "post-report open. Fractional/dollar orders are market + "
+        "regular-hours only."
     )
     lines.append(
         "reminders: bearish = options (no equity shorting on Robinhood); "

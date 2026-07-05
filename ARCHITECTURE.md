@@ -139,9 +139,18 @@ gap capture, cash-first:
   (equity/cash/buying power) at the start of every run; it sizes down to
   buying power, never up. The context pack shows the snapshot and the PDT
   budget to every agent.
-- **PDT**: under $25k = 3 same-day round trips per 5 trading days. The store
-  counts our own live same-day round trips; the evening tick refuses same-day
-  exits that would breach it (positions ride to the open instead).
+- **Settlement (not PDT)**: the designated account (••••8223 'Agentic') is a
+  CASH account — PDT does not apply. The binding rule is T+1 settlement /
+  good-faith violations: the evening tick refuses a same-day exit whenever a
+  live close already happened that day (the entry would have been funded by
+  unsettled proceeds); positions ride to the open, where the proceeds have
+  settled.
+- **Order mechanics (verified against the API 2026-07-05)**: fractional /
+  dollar-notional orders are market + regular-hours only; extended hours is
+  whole-share limit only; shorting is impossible (cash account + API rejects
+  fractional shorts). Entries prefer whole shares (marketable limit) when the
+  price fits the size — those can exit after-hours — else dollar-notional
+  market. All order tools use the designated account only.
 
 Tick schedule (launchd, local = ET): **09:31** morning (exits at the open,
 labeling, scout, strategist) · **15:40** afternoon (analysis + entries) ·
@@ -272,6 +281,14 @@ Keep this section honest — dated entries only, from real runs.
   live-eligible event: TSM 2026-07-16 bmo (entry window 7/15 ~15:45 ET) —
   its 0.1.0 pass will be re-analyzed under v0.2.0 (pass-from-older-policy
   re-analysis rule in daily.py).
+- **2026-07-05** — **API mechanics verified** (schemas + live tradability
+  calls): all 15 universe names fractional-tradable; fractional/dollar orders
+  are market+regular-hours only (tool-level, regardless of instrument flags);
+  extended hours = whole-share limits; equity shorting impossible (designated
+  'Agentic' account ••••8223 is CASH — also has no option level yet, a
+  prerequisite for Phase 5b). PDT gating replaced with cash-account GFV
+  guard. NYSE 2026 holiday/half-day calendar added to the tick's trading-day
+  logic.
 - **2026-07-05** — **Backtest backfill complete** (Sonnet 5): 90 events, all
   15 universe symbols × 6 quarters (2025-02 → 2026-06). Universe gap
   (T-1 close → post-open): mean +1.77%, std 11.51%, up-rate 0.52, worst

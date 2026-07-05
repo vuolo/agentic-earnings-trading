@@ -1,0 +1,102 @@
+from pathlib import Path
+
+import pytest
+
+from engine.store import Store
+
+
+@pytest.fixture()
+def store(tmp_path: Path):
+    s = Store(tmp_path / "t.sqlite3")
+    yield s
+    s.close()
+
+
+def _pending(store, symbol="NVDA", report_date="2026-08-26"):
+    event_id = store.upsert_event(symbol, report_date)
+    return store.insert_decision(
+        symbol=symbol, action="long_equity", policy_version="t",
+        risk_verdict="approved", status="pending_live",
+        size_usd=200.0, entry_price=100.0, event_id=event_id,
+    )
+
+
+def test_execution_fill_flow(store):
+    did = _pending(store)
+    assert [r["id"] for r in store.pending_executions()] == [did]
+    row = store.mark_execution(did, filled=True, fill_price=100.5, detail="limit filled")
+    assert row["status"] == "open_live"
+    assert row["entry_price"] == pytest.approx(100.5)
+    assert store.pending_executions() == []
+
+
+def test_execution_failure_flow(store):
+    did = _pending(store)
+    row = store.mark_execution(did, filled=False, detail="unfilled, cancelled")
+    assert row["status"] == "exec_failed"
+    assert row["exec_detail"] == "unfilled, cancelled"
+
+
+def test_mark_execution_guards(store):
+    did = _pending(store)
+    assert store.mark_execution(did, filled=True, fill_price=None) is None  # needs price
+    store.mark_execution(did, filled=True, fill_price=100.0)
+    assert store.mark_execution(did, filled=True, fill_price=101.0) is None  # not pending
+    assert store.mark_execution(9999, filled=False) is None
+
+
+def test_live_close_records_real_pnl(store):
+    did = _pending(store, report_date="2026-07-10")
+    store.mark_execution(did, filled=True, fill_price=100.0)
+    due = store.due_live_closes("2026-07-11")
+    assert [r["id"] for r in due] == [did]
+    result = store.close_live(did, 108.0, "T+1 sell fill")
+    assert result["pnl_usd"] == pytest.approx(16.0)  # $200 @ 100 -> 108
+    assert store.get_decision(did)["status"] == "closed_live"
+    assert store.due_live_closes("2026-07-11") == []
+
+
+def test_pass_counterfactual_labeling(store):
+    event_id = store.upsert_event("TSM", "2026-07-16")
+    did = store.insert_decision(
+        symbol="TSM", action="pass", policy_version="t",
+        risk_verdict="n/a (pass)", status="pass",
+        entry_price=434.45, event_id=event_id,
+    )
+    assert [r["id"] for r in store.due_pass_labels("2026-07-17")] == [did]
+    result = store.label_pass(did, 447.5, "moved +3% — pass was right vs 9.6% implied")
+    assert result["pnl_usd"] == 0.0
+    assert result["move_pct"] == pytest.approx(3.004, abs=0.01)
+    assert store.get_decision(did)["status"] == "pass"  # status unchanged
+    assert store.label_pass(did, 450.0) is None  # already labeled
+    assert store.due_pass_labels("2026-07-17") == []
+
+
+def test_pass_label_without_reference_price(store):
+    event_id = store.upsert_event("MU", "2026-07-01")
+    did = store.insert_decision(
+        symbol="MU", action="pass", policy_version="t",
+        risk_verdict="n/a (pass)", status="pass", event_id=event_id,
+    )
+    result = store.label_pass(did, 120.0, "no ref price recorded")
+    assert result["move_pct"] is None
+    assert result["pnl_usd"] == 0.0
+
+
+def test_meta_and_outcome_count(store):
+    assert store.outcome_count() == 0
+    assert store.meta_get("strategist_outcome_count", "0") == "0"
+    store.meta_set("strategist_outcome_count", "5")
+    assert store.meta_get("strategist_outcome_count") == "5"
+    store.meta_set("strategist_outcome_count", "7")
+    assert store.meta_get("strategist_outcome_count") == "7"
+
+
+def test_performance_summary_shapes(store):
+    did = _pending(store, report_date="2026-07-10")
+    store.mark_execution(did, filled=True, fill_price=100.0)
+    store.close_live(did, 110.0)
+    summary = store.performance_summary()
+    assert summary["closed_trades"] == 1
+    assert summary["wins"] == 1
+    assert summary["total_pnl_usd"] == pytest.approx(20.0)

@@ -23,6 +23,13 @@ def test_event_upsert_is_idempotent(store):
     assert row["raw"] == '{"src": "fresher"}'
 
 
+def test_upsert_unknown_timing_never_downgrades(store):
+    d = (date.today() + timedelta(days=3)).isoformat()
+    store.upsert_event("NVDA", d, "bmo")
+    store.upsert_event("NVDA", d)  # e.g. analyst linking the event, timing unknown
+    assert store.get_event("NVDA", d)["timing"] == "bmo"
+
+
 def test_upsert_rejects_bad_date(store):
     with pytest.raises(ValueError):
         store.upsert_event("NVDA", "next tuesday")

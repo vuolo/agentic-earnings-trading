@@ -1,4 +1,4 @@
-"""Daily tick: scout → labeler (due closes) → analyst (due events).
+"""Daily tick: scout → labeler → analyst → executor (armed only) → strategist.
 
 The orchestration logic is deterministic — agents run only where judgment is
 needed. Fired by launchd each market morning (see orchestrator/schedule.py) or
@@ -13,10 +13,13 @@ from __future__ import annotations
 import argparse
 from datetime import date, timedelta
 
+from engine.arming import arm_status
 from engine.config import Config
 from engine.store import Store
 
 from . import launcher
+
+STRATEGIST_MIN_NEW_OUTCOMES = 3
 
 
 def analyst_due(report_date: str, timing: str, today: date) -> bool:
@@ -47,16 +50,25 @@ def tick(*, run_scout: bool = True, dry_run: bool = False,
     cfg = Config.from_env()
     store = Store(cfg.db_path)
     try:
+        # -- labeler: paper close-outs + pass counterfactuals -----------------
         due = store.due_closes(today.isoformat())
-        if due:
-            symbols = sorted({r["symbol"] for r in due})
-            print(f"labeler: due closes → {', '.join(symbols)}")
+        passes = store.due_pass_labels(today.isoformat())
+        if due or passes:
+            jobs = []
+            if due:
+                jobs.append("close paper positions: "
+                            + ", ".join(sorted({r["symbol"] for r in due})))
+            if passes:
+                jobs.append("label pass counterfactuals (decision_id symbol): "
+                            + ", ".join(f"#{r['id']} {r['symbol']}" for r in passes))
+            job = "; ".join(jobs)
+            print(f"labeler: {job}")
             if not dry_run:
-                rc = launcher.run_role("labeler", symbol=", ".join(symbols), model=model)
-                print(f"labeler exit {rc}")
+                print(f"labeler exit {launcher.run_role('labeler', symbol=job, model=model)}")
         else:
-            print("labeler: no positions due for close")
+            print("labeler: nothing due")
 
+        # -- analyst: events entering the decision window ----------------------
         ran = 0
         for e in store.upcoming_events(days=3):
             if not analyst_due(e["report_date"], e["timing"], today):
@@ -71,6 +83,43 @@ def tick(*, run_scout: bool = True, dry_run: bool = False,
                 print(f"analyst({e['symbol']}) exit {rc}")
         if ran == 0:
             print("analyst: no events in the decision window")
+
+        # -- executor: live orders, only while the operator's arm is active ----
+        arm, why = arm_status()
+        pending = store.pending_executions()
+        live_closes = store.due_live_closes(today.isoformat())
+        if arm and (pending or live_closes):
+            jobs = []
+            if pending:
+                jobs.append("buy (decision_id symbol $size @ref): " + ", ".join(
+                    f"#{r['id']} {r['symbol']} ${r['size_usd']:,.0f} @{r['entry_price']}"
+                    for r in pending))
+            if live_closes:
+                jobs.append("sell to close (decision_id symbol): " + ", ".join(
+                    f"#{r['id']} {r['symbol']}" for r in live_closes))
+            job = "; ".join(jobs)
+            print(f"executor (ARMED until {arm.expires}): {job}")
+            if not dry_run:
+                print(f"executor exit {launcher.run_role('executor', symbol=job, model=model)}")
+        elif pending or live_closes:
+            print(f"executor: {len(pending)} pending buy(s), {len(live_closes)} due "
+                  f"close(s), but {why} — nothing executes")
+        else:
+            print("executor: nothing pending")
+
+        # -- strategist: self-improvement once enough new outcomes exist -------
+        n = store.outcome_count()
+        last = int(store.meta_get("strategist_outcome_count", "0") or 0)
+        fresh = n - last
+        if fresh >= STRATEGIST_MIN_NEW_OUTCOMES:
+            print(f"strategist: {fresh} new labeled outcomes — running policy review")
+            if not dry_run:
+                rc = launcher.run_role("strategist", model=model)
+                print(f"strategist exit {rc}")
+                store.meta_set("strategist_outcome_count", str(n))
+        else:
+            print(f"strategist: {fresh} new outcomes since last review "
+                  f"(<{STRATEGIST_MIN_NEW_OUTCOMES}) — skip")
     finally:
         store.close()
     print("tick complete")

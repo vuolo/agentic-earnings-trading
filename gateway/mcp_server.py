@@ -16,16 +16,24 @@ configured via EARNINGS_* env vars; see engine/config.py)
 from __future__ import annotations
 
 import json
+import re
+import subprocess
 from datetime import date
 
 from mcp.server.fastmcp import FastMCP
 
-from engine.config import Config
+from engine.config import REPO_ROOT, Config
 from engine.context import build_context_pack
 from engine.risk import TRADE_ACTIONS, VALID_ACTIONS, DecisionRequest, RiskGate
 from engine.store import Store
 
 mcp = FastMCP("earnings")
+
+POLICY_PATH = REPO_ROOT / "prompts" / "POLICY.md"
+_POLICY_REQUIRED_SECTIONS = (
+    "## Universe", "## Required feature snapshot", "## Entry rules",
+    "## Sizing", "## Exit",
+)
 
 CFG = Config.from_env()
 STORE = Store(CFG.db_path)
@@ -107,6 +115,7 @@ def submit_decision(
             symbol=symbol, action="pass", policy_version=CFG.policy_version,
             risk_verdict="n/a (pass)", status="pass", conviction=conviction,
             thesis=thesis, features=features, event_id=event_id,
+            entry_price=entry_price if entry_price > 0 else None,
         )
         return f"Recorded pass as decision #{did}.\n\n{_pack()}"
 
@@ -119,14 +128,27 @@ def submit_decision(
     verdict = GATE.evaluate(
         DecisionRequest(symbol=symbol, action=action, size_usd=size_usd, conviction=conviction)
     )
-    status = "open_paper" if verdict.approved else "rejected"
+    # Live routing: only armed long_equity goes to the executor. Bearish stays
+    # a paper leg until live options execution exists (ARCHITECTURE §4).
+    if not verdict.approved:
+        status = "rejected"
+    elif CFG.mode == "live" and action == "long_equity":
+        status = "pending_live"
+    else:
+        status = "open_paper"
     did = STORE.insert_decision(
         symbol=symbol, action=action, policy_version=CFG.policy_version,
         risk_verdict=str(verdict), status=status, size_usd=size_usd,
         entry_price=entry_price, conviction=conviction, thesis=thesis,
         features=features, event_id=event_id,
     )
-    if verdict.approved:
+    if status == "pending_live":
+        msg = (
+            f"Decision #{did} APPROVED — queued for LIVE execution: {symbol} "
+            f"{action} ${size_usd:,.2f} (ref {entry_price}). The executor "
+            "will place the real order."
+        )
+    elif verdict.approved:
         msg = (
             f"Decision #{did} APPROVED — paper position opened: {symbol} {action} "
             f"${size_usd:,.2f} @ {entry_price}."
@@ -154,6 +176,141 @@ def close_paper_position(symbol: str, exit_price: float, notes: str = "") -> str
         f"Closed decision #{result['decision_id']}: {result['symbol']} "
         f"{result['action']} {result['entry_price']} → {result['exit_price']} "
         f"({result['move_pct']:+.2f}%), P&L ${result['pnl_usd']:+,.2f}.\n\n{_pack()}"
+    )
+
+
+@mcp.tool()
+def label_pass_outcome(decision_id: int, exit_price: float, notes: str = "") -> str:
+    """Record the counterfactual outcome for a PASS decision after its event:
+    what the underlying did (exit_price = current post-event price). P&L is 0
+    (no capital was used); the move teaches the dataset what the pass avoided
+    or missed."""
+    result = STORE.label_pass(decision_id, exit_price, notes)
+    if result is None:
+        return (
+            f"ERROR: decision #{decision_id} is not an unlabeled pass "
+            f"(or invalid price).\n\n{_pack()}"
+        )
+    move = "n/a (no reference price recorded)" if result["move_pct"] is None \
+        else f"{result['move_pct']:+.2f}%"
+    return (
+        f"Labeled pass #{decision_id} ({result['symbol']}): counterfactual "
+        f"move {move}.\n\n{_pack()}"
+    )
+
+
+@mcp.tool()
+def get_pending_executions() -> str:
+    """List decisions queued for LIVE execution (status pending_live). The
+    executor may execute ONLY these, exactly as specified."""
+    rows = STORE.pending_executions()
+    if not rows:
+        return f"No pending live executions.\n\n{_pack()}"
+    lines = [
+        f"#{r['id']} {r['symbol']} {r['action']} ${r['size_usd']:,.2f} "
+        f"(ref price {r['entry_price']})"
+        for r in rows
+    ]
+    return "Pending live executions:\n" + "\n".join(lines) + f"\n\n{_pack()}"
+
+
+@mcp.tool()
+def report_execution(
+    decision_id: int, filled: bool, fill_price: float = 0.0, detail: str = ""
+) -> str:
+    """Report the result of executing a pending_live decision. filled=True
+    requires the real fill_price; filled=False marks exec_failed with detail
+    (e.g. 'order unfilled, cancelled' or 'price moved beyond guard')."""
+    row = STORE.mark_execution(
+        decision_id, filled=filled,
+        fill_price=fill_price if fill_price > 0 else None, detail=detail,
+    )
+    if row is None:
+        return (
+            f"ERROR: decision #{decision_id} is not pending_live (or fill_price "
+            f"missing).\n\n{_pack()}"
+        )
+    return f"Decision #{decision_id} → {row['status']}.\n\n{_pack()}"
+
+
+@mcp.tool()
+def report_live_close(decision_id: int, exit_price: float, notes: str = "") -> str:
+    """Report the real exit fill for an open_live position — records the
+    labeled outcome and closes it."""
+    result = STORE.close_live(decision_id, exit_price, notes)
+    if result is None:
+        return f"ERROR: decision #{decision_id} is not open_live (or invalid price).\n\n{_pack()}"
+    return (
+        f"Closed live #{decision_id}: {result['symbol']} {result['entry_price']} "
+        f"→ {result['exit_price']} ({result['move_pct']:+.2f}%), "
+        f"P&L ${result['pnl_usd']:+,.2f}.\n\n{_pack()}"
+    )
+
+
+@mcp.tool()
+def get_performance_summary() -> str:
+    """Aggregate performance of the decision dataset: closed trades, win count,
+    total P&L, labeled pass counterfactuals, rejections, execution failures."""
+    return json.dumps(STORE.performance_summary(), indent=1) + f"\n\n{_pack()}"
+
+
+@mcp.tool()
+def get_labeled_decisions(limit: int = 20) -> str:
+    """The most recent labeled decisions with their full feature snapshots,
+    theses, and outcomes — the raw material for policy review."""
+    rows = STORE.labeled_decisions(limit)
+    for r in rows:
+        try:
+            r["features"] = json.loads(r["features"]) if r["features"] else None
+        except json.JSONDecodeError:
+            pass
+    return json.dumps(rows, indent=1, default=str)
+
+
+@mcp.tool()
+def propose_policy_update(new_policy_markdown: str, rationale: str) -> str:
+    """Replace prompts/POLICY.md with a revised version (the strategist's
+    self-improvement path). Requirements enforced here: the Version line must
+    be bumped, all required sections must be present, and a substantive
+    rationale must be given. The change is git-committed for the audit trail.
+
+    This updates trading POLICY only. Engine risk caps and the live arm switch
+    are code/operator territory and are not affected by policy text.
+    """
+    if len(rationale.strip()) < 40:
+        return f"ERROR: rationale too thin — explain what the data showed.\n\n{_pack()}"
+    old = POLICY_PATH.read_text()
+    old_v = re.search(r"(?m)^Version:\s*(\S+)", old)
+    new_v = re.search(r"(?m)^Version:\s*(\S+)", new_policy_markdown)
+    if not new_v:
+        return f"ERROR: new policy has no 'Version:' line.\n\n{_pack()}"
+    if old_v and new_v.group(1) == old_v.group(1):
+        return f"ERROR: version not bumped (still {new_v.group(1)}).\n\n{_pack()}"
+    missing = [s for s in _POLICY_REQUIRED_SECTIONS if s not in new_policy_markdown]
+    if missing:
+        return f"ERROR: new policy is missing sections: {', '.join(missing)}.\n\n{_pack()}"
+    if len(new_policy_markdown) < 800:
+        return f"ERROR: new policy suspiciously short — keep it complete.\n\n{_pack()}"
+
+    POLICY_PATH.write_text(new_policy_markdown)
+    msg = (
+        f"policy: v{old_v.group(1) if old_v else '?'} -> v{new_v.group(1)} (strategist)\n\n"
+        f"{rationale}\n\n"
+        "Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+    )
+    r = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "commit", "-m", msg, "--", "prompts/POLICY.md"],
+        capture_output=True, text=True,
+    )
+    if r.returncode != 0:
+        return (
+            f"Policy file updated to v{new_v.group(1)}, but git commit failed:\n"
+            f"{r.stderr.strip()}\n\n{_pack()}"
+        )
+    STORE.meta_set("strategist_outcome_count", str(STORE.outcome_count()))
+    return (
+        f"Policy updated and committed: v{new_v.group(1)}. It takes effect on "
+        f"the next agent launch.\n\n{_pack()}"
     )
 
 

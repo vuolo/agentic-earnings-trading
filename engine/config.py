@@ -48,8 +48,13 @@ class Config:
             max_daily_new_exposure_usd=float(env.get("EARNINGS_MAX_DAILY_USD", 2_500.0)),
             max_open_positions=int(env.get("EARNINGS_MAX_OPEN_POSITIONS", 5)),
         )
+        mode = env.get("EARNINGS_MODE", "").strip().lower()
+        if not mode:
+            # Single source of truth for live: the operator's arm switch.
+            from . import arming
+            mode = "live" if arming.arm_status()[0] else "paper"
         return cls(
-            mode=env.get("EARNINGS_MODE", "paper").strip().lower(),
+            mode=mode,
             db_path=Path(env.get("EARNINGS_DB", str(cls.db_path))),
             policy_version=env.get("EARNINGS_POLICY_VERSION", "0.1.0"),
             universe=universe,

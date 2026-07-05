@@ -68,10 +68,39 @@ ROLES: dict[str, Role] = {
     "labeler": Role(
         prompt_file="labeler.md",
         rb_tools=("get_equity_quotes",),
-        gw_tools=("get_context_pack", "close_paper_position"),
+        gw_tools=("get_context_pack", "close_paper_position", "label_pass_outcome"),
         kickoff=(
-            "Close these due paper positions at fresh market quotes, then "
-            "stop: {symbol}. Start by calling get_context_pack."
+            "Work exactly these labeling jobs, then stop — {symbol}. "
+            "Start by calling get_context_pack."
+        ),
+    ),
+    # The ONLY role that may carry order tools, and the tick launches it only
+    # while the operator's arm switch is active (CLAUDE.md rule 1).
+    "executor": Role(
+        prompt_file="executor.md",
+        rb_tools=(
+            "get_equity_quotes", "get_equity_positions", "get_equity_orders",
+            "review_equity_order", "place_equity_order", "cancel_equity_order",
+        ),
+        gw_tools=(
+            "get_context_pack", "get_pending_executions",
+            "report_execution", "report_live_close",
+        ),
+        kickoff=(
+            "Execute exactly these jobs, then stop — {symbol}. "
+            "Start by calling get_context_pack, then get_pending_executions."
+        ),
+    ),
+    "strategist": Role(
+        prompt_file="strategist.md",
+        rb_tools=(),
+        gw_tools=(
+            "get_context_pack", "get_performance_summary",
+            "get_labeled_decisions", "propose_policy_update",
+        ),
+        kickoff=(
+            "Run a policy review per your instructions. Start by calling "
+            "get_context_pack, then get_performance_summary."
         ),
     ),
 }

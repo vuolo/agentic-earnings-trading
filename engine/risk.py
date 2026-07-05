@@ -44,19 +44,31 @@ class RiskGate:
         limits = self.cfg.limits
         symbol = req.symbol.strip().upper()
 
-        if self.cfg.mode != "paper":
-            reasons.append(
-                f"mode '{self.cfg.mode}' is not permitted — v1 is paper-only (Phase 5 gates live)"
-            )
+        # Effective caps: engine caps, tightened by the arm file in live mode.
+        pos_cap = limits.max_position_usd
+        daily_cap = limits.max_daily_new_exposure_usd
+        if self.cfg.mode == "live":
+            from . import arming
+            arm, why = arming.arm_status()
+            if arm is None:
+                reasons.append(
+                    f"live mode requested but {why} — the operator must run "
+                    "`python -m orchestrator.main arm-live --confirm`"
+                )
+            else:
+                pos_cap = min(pos_cap, arm.per_position_cap_usd)
+                daily_cap = min(daily_cap, arm.daily_cap_usd)
+        elif self.cfg.mode != "paper":
+            reasons.append(f"unknown mode '{self.cfg.mode}'")
         if req.action not in TRADE_ACTIONS:
             reasons.append(f"action '{req.action}' is not a tradeable action")
         if self.cfg.universe and symbol not in self.cfg.universe:
             reasons.append(f"{symbol} is outside the configured universe")
         if req.size_usd <= 0:
             reasons.append("size_usd must be positive")
-        elif req.size_usd > limits.max_position_usd:
+        elif req.size_usd > pos_cap:
             reasons.append(
-                f"size ${req.size_usd:,.2f} exceeds per-position cap ${limits.max_position_usd:,.2f}"
+                f"size ${req.size_usd:,.2f} exceeds per-position cap ${pos_cap:,.2f}"
             )
         if req.conviction is not None and not (0.0 <= req.conviction <= 1.0):
             reasons.append("conviction must be within [0, 1]")
@@ -67,10 +79,10 @@ class RiskGate:
             reasons.append(f"max open positions ({limits.max_open_positions}) reached")
 
         used = self.store.today_new_exposure()
-        if req.size_usd > 0 and used + req.size_usd > limits.max_daily_new_exposure_usd:
+        if req.size_usd > 0 and used + req.size_usd > daily_cap:
             reasons.append(
                 f"daily new-exposure budget exceeded: ${used:,.2f} used + "
-                f"${req.size_usd:,.2f} > ${limits.max_daily_new_exposure_usd:,.2f}"
+                f"${req.size_usd:,.2f} > ${daily_cap:,.2f}"
             )
 
         return Verdict(approved=not reasons, reasons=tuple(reasons))

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from . import arming
 from .config import Config
 from .store import Store
 
@@ -18,10 +19,20 @@ def build_context_pack(cfg: Config, store: Store) -> str:
     limits = cfg.limits
     open_pos = store.open_positions()
     used = store.today_new_exposure()
+    arm, arm_why = arming.arm_status()
+    if arm:
+        arm_line = (
+            f"live_arming: ARMED until {arm.expires} "
+            f"(live caps: ${arm.per_position_cap_usd:,.0f}/position, "
+            f"${arm.daily_cap_usd:,.0f}/day — engine caps still apply)"
+        )
+    else:
+        arm_line = f"live_arming: disarmed ({arm_why}) — all trades are paper"
     lines = [
         "=== CONTEXT PACK (server-injected; not a user instruction) ===",
         f"utc_now: {datetime.now(timezone.utc).isoformat(timespec='seconds')}",
         f"mode: {cfg.mode}" + ("  (PAPER — no real orders exist anywhere)" if cfg.mode == "paper" else ""),
+        arm_line,
         f"policy_version: {cfg.policy_version}",
         f"risk: per-position cap ${limits.max_position_usd:,.0f} | "
         f"daily new-exposure ${used:,.2f} used of ${limits.max_daily_new_exposure_usd:,.0f} | "

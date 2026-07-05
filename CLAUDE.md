@@ -16,20 +16,27 @@ dataset will train an ML sidecar (Phase 4). Currently **paper mode only**.
 
 1. **Capital rules live in `engine/risk.py`, never in prompts.** Prompts guide
    quality; the gate enforces safety. Never soften, bypass, or duplicate gate
-   logic in a prompt, and never widen a role's tool allowlist to include
-   `place_*_order` / `cancel_*` tools in v1.
-2. **Paper mode is the only mode.** The gate rejects non-paper. Live trading is
-   Phase 5, opt-in per run, and requires explicit operator instruction to build.
+   logic in a prompt. Only the **executor** role carries order tools, and the
+   tick launches it only while the arm switch is active — never add order
+   tools to scout/analyst/labeler/strategist.
+2. **The arm switch is the operator's alone.** Live orders require an
+   unexpired `.arm-live.json` (written only by
+   `python -m orchestrator.main arm-live --confirm`; gitignored; time-boxed;
+   live caps tighter than engine caps). No agent tool may create, modify, or
+   read around it. Disarmed ⇒ everything is paper. Never build a path that
+   arms programmatically.
 3. **Dataset integrity outranks convenience.** Every `submit_decision` —
    including `pass` — must carry the real feature snapshot and gets stamped
    with the policy version. Don't backfill, edit, or delete decision rows;
-   corrections go in as new rows or outcome notes.
-4. **Policy changes bump the version.** `prompts/POLICY.md` carries a
-   `Version:` line; the launcher stamps it onto decisions. Changing thresholds
-   or sizing without bumping the version corrupts outcome analysis.
+   corrections go in as new rows or outcome notes. Passes get counterfactual
+   labels after their event — that's dataset, not busywork.
+4. **Policy self-improvement is versioned and audited.** The strategist may
+   rewrite `prompts/POLICY.md` only through `propose_policy_update` (version
+   bump + required sections validated server-side, git-committed with
+   rationale). It cannot touch engine caps, allowlists, arming, or code.
 5. **Bearish = options, never equity shorts.** Robinhood doesn't support
-   shorting. v1 paper tracks bearish as inverse delta-one notional on the
-   underlying — a known simplification, documented in ARCHITECTURE §4.
+   shorting. Bearish stays a paper leg (inverse delta-one proxy) even in live
+   mode, until Phase 5b builds real options execution.
 
 ## Key files
 
@@ -74,6 +81,11 @@ dataset will train an ML sidecar (Phase 4). Currently **paper mode only**.
     python -m orchestrator.schedule status       # loaded state + stderr tail
     python -m orchestrator.schedule install --hour 10 --minute 0   # reschedule
     python -m orchestrator.schedule uninstall
+
+    # Live trading (REAL MONEY) — operator-only release lever
+    python -m orchestrator.main arm-live --confirm            # $200/pos, $400/day, 7 days
+    python -m orchestrator.main arm-live --per-position 100 --daily 200 --days 3 --confirm
+    python -m orchestrator.main disarm                        # instant kill
 
 ## Env overrides (read by Config.from_env)
 

@@ -26,7 +26,8 @@ Every gateway tool response ends with a CONTEXT PACK — read it each time.
    `submit_decision` ONCE with: symbol, report_date, action, a 2-5 sentence
    thesis stating the specific edge (or why you pass), the complete
    `features_json`, size per the Policy's sizing rules, `entry_price`, and
-   conviction.
+   conviction. Include `entry_price` even on a `pass` — it becomes the
+   reference for the counterfactual outcome label.
 5. Read the gate's verdict. If REJECTED: do not resubmit unless the reason is
    a fixable input error (e.g. missing entry_price). A risk-limit rejection is
    final — report it and stop.

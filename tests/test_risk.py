@@ -94,12 +94,14 @@ def test_rejects_when_daily_budget_exhausted(setup):
     assert any("daily new-exposure budget" in r for r in verdict.reasons)
 
 
-def test_rejects_live_mode(setup, tmp_path):
+def test_rejects_live_mode_when_disarmed(setup, tmp_path, monkeypatch):
+    from engine import arming
+    monkeypatch.setattr(arming, "ARM_PATH", tmp_path / "no-arm.json")
     cfg, store, _ = setup
     live_cfg = Config(mode="live", db_path=cfg.db_path, universe=cfg.universe, limits=cfg.limits)
     verdict = RiskGate(live_cfg, store).evaluate(req())
     assert not verdict.approved
-    assert any("paper-only" in r for r in verdict.reasons)
+    assert any("not armed" in r for r in verdict.reasons)
 
 
 def test_rejects_bad_conviction(setup):

@@ -7,9 +7,14 @@ a **server-side risk gate** decides whether proposed trades are accepted; every
 decision is recorded with its full feature snapshot so the dataset can train an
 ML sidecar that eventually becomes the primary signal source.
 
-**Paper mode only** in v1 — agents have read-only market-data access and cannot
-place real orders. See `ARCHITECTURE.md` for the full design and roadmap;
-`CLAUDE.md` for the working rules.
+The system is a **breathing loop**: a daily tick (launchd) runs scout →
+labeler → analyst → executor → strategist. It labels its own outcomes
+(including pass counterfactuals) and the strategist revises the versioned
+trading policy from the evidence — git-committed, audit-trailed. **Live
+trading is disarmed by default**: real orders happen only while the operator's
+time-boxed arm switch (`arm-live --confirm`) is active, under caps enforced in
+code that no agent or policy text can change. See `ARCHITECTURE.md` for the
+full design; `CLAUDE.md` for the working rules.
 
 ## Quick start
 

@@ -8,6 +8,7 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 datasets/
+.arm-live.json
 logs/
 *.sqlite3
 *.sqlite3-*

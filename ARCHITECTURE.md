@@ -38,6 +38,39 @@ These are load-bearing; don't erode them.
    and off by default — the same "default-safe, flag to arm" posture as the
    reference repo's guard during scaffolding.
 
+## 1.5 The breathing loop (operating model)
+
+The system is designed to run, learn, and trade autonomously:
+
+```
+        ┌──────────────────────────────────────────────────────┐
+        │                 daily tick (launchd)                 │
+        │  scout → labeler → analyst → executor → strategist   │
+        └──────────────────────────────────────────────────────┘
+ scout:      keeps the earnings calendar fresh
+ labeler:    closes due paper positions; labels PASS counterfactuals
+             (passes teach the dataset too — what was avoided or missed)
+ analyst:    one decision per event entering its window, full snapshot
+ executor:   REAL orders — runs only while the operator's arm switch is on
+ strategist: every ≥3 new labeled outcomes, reviews the dataset and revises
+             POLICY.md itself (version bump + git commit = audit trail)
+```
+
+**What never becomes autonomous** (the grip points):
+
+1. `engine/risk.py` caps and the gateway's enforcement — code, not policy text.
+   The strategist rewrites policy; the gate still rejects at the caps.
+2. **The arm switch** (`engine/arming.py`): live orders require an unexpired
+   `.arm-live.json` written only by the operator via
+   `python -m orchestrator.main arm-live --confirm` — time-boxed (default 7
+   days), with live caps *tighter* than engine caps (defaults $200/position,
+   $400/day). No agent has any tool that can create or modify it. Disarm is
+   instant. When it expires, the system degrades safely back to paper.
+3. Role tool allowlists: only the executor carries order tools, and the tick
+   launches it only while armed, with the exact approved jobs in its kickoff.
+4. Dataset integrity: decisions are never edited or deleted; policy changes
+   land as git commits stamped with rationale.
+
 ## 2. System shape
 
 ```
@@ -133,10 +166,15 @@ be sliced by policy version. Change the policy → bump the version.
   post-earnings move / P&L). Model output becomes a feature in the context
   pack first (advisory), then the primary signal with Claude as orchestrator
   and sanity layer.
-- **Phase 5 — Live capital (gated).** Executor role with `place_equity_order` /
-  `place_option_order`, armed per-run by explicit flag, hard budget caps in the
-  gate, order review via `review_*_order` before placement. Off by default,
-  forever.
+- **Phase 5a — Live execution scaffolding (built 2026-07-05, DISARMED).**
+  Executor role (equity only: buy limit with 1% price guard, sell-to-close,
+  review-before-place, real fills reported back), `pending_live → open_live →
+  closed_live` lifecycle, arm switch + arm-aware risk gate. Bearish stays a
+  paper leg until live options execution exists. Arming is the operator's
+  single release lever; off by default, forever.
+- **Phase 5b — Live options execution.** `place_option_order` for the bearish
+  leg (long puts / defined-risk spreads) with real option P&L; retire the
+  delta-one proxy.
 
 ## 7. Repo layout
 
@@ -186,3 +224,10 @@ Keep this section honest — dated entries only, from real runs.
   structures; revisit after 7/16 realized move is known.
 - **2026-07-05** — Phase 3 scheduler installed (`com.earnings.daily`, 09:45
   local). 23 tests passing. Dry-run tick verified correct due/skip logic.
+- **2026-07-05** — Breathing loop built: strategist (policy self-improvement,
+  gateway-validated + git-committed), pass counterfactual labeling, live
+  execution scaffolding behind the arm switch (disarmed). Migration of the
+  live DB to the v2 decisions schema verified (1 row preserved). Found and
+  fixed a real upsert bug the dry-run exposed: an event link from
+  `submit_decision` downgraded TSM's timing bmo→unknown; upserts now never
+  overwrite known timing with 'unknown'. 39 tests passing.

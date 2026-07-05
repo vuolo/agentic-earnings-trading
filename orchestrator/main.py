@@ -36,12 +36,50 @@ def main(argv: list[str] | None = None) -> int:
     p_close.add_argument("--price", type=float, required=True)
     p_close.add_argument("--notes", default="")
 
+    p_arm = sub.add_parser(
+        "arm-live", help="ARM live trading (REAL MONEY) for a limited window"
+    )
+    p_arm.add_argument("--per-position", type=float, default=200.0,
+                       help="live per-position cap in USD (default 200)")
+    p_arm.add_argument("--daily", type=float, default=400.0,
+                       help="live daily new-exposure cap in USD (default 400)")
+    p_arm.add_argument("--days", type=int, default=7,
+                       help="days until the arm auto-expires (default 7)")
+    p_arm.add_argument("--confirm", action="store_true",
+                       help="required: acknowledge real orders will be placed")
+
+    sub.add_parser("disarm", help="disarm live trading immediately")
+
     args = parser.parse_args(argv)
 
     if args.cmd == "scout":
         return launcher.run_role("scout", model=args.model)
     if args.cmd == "analyze":
         return launcher.run_role("analyst", symbol=args.symbol.upper(), model=args.model)
+
+    if args.cmd == "arm-live":
+        from engine import arming
+        if not args.confirm:
+            print(
+                "Refusing to arm without --confirm.\n\n"
+                "Arming means the daily tick's executor places REAL orders on "
+                "your Robinhood account for approved long_equity decisions, "
+                f"capped at ${args.per_position:,.2f}/position and "
+                f"${args.daily:,.2f}/day of new exposure, auto-expiring in "
+                f"{args.days} day(s). Engine caps still apply on top.\n\n"
+                "Re-run with --confirm to arm.",
+                file=sys.stderr,
+            )
+            return 1
+        a = arming.arm(args.per_position, args.daily, args.days)
+        print(f"ARMED live trading until {a.expires} "
+              f"(${a.per_position_cap_usd:,.2f}/position, ${a.daily_cap_usd:,.2f}/day). "
+              "Disarm anytime: python -m orchestrator.main disarm")
+        return 0
+    if args.cmd == "disarm":
+        from engine import arming
+        print("disarmed" if arming.disarm() else "already disarmed")
+        return 0
 
     cfg = Config.from_env()
     store = Store(cfg.db_path)

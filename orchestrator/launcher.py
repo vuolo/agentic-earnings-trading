@@ -65,6 +65,15 @@ ROLES: dict[str, Role] = {
             "decision per your instructions. Start by calling get_context_pack."
         ),
     ),
+    "labeler": Role(
+        prompt_file="labeler.md",
+        rb_tools=("get_equity_quotes",),
+        gw_tools=("get_context_pack", "close_paper_position"),
+        kickoff=(
+            "Close these due paper positions at fresh market quotes, then "
+            "stop: {symbol}. Start by calling get_context_pack."
+        ),
+    ),
 }
 
 

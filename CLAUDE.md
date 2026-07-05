@@ -65,8 +65,15 @@ dataset will train an ML sidecar (Phase 4). Currently **paper mode only**.
     python -m orchestrator.main analyze NVDA             # analyst run for one symbol
     python -m orchestrator.main analyze NVDA --model claude-fable-5
 
-    # Manual paper close / labeling (until the labeler role exists)
+    # Manual paper close / labeling (the daily tick's labeler handles this too)
     python -m orchestrator.main close NVDA --price 187.50 --notes "T+1 open"
+
+    # Daily automation (launchd; installed 2026-07-05 at 09:45 local)
+    python -m orchestrator.daily --dry-run       # what would the tick do
+    python -m orchestrator.daily                 # full tick now
+    python -m orchestrator.schedule status       # loaded state + stderr tail
+    python -m orchestrator.schedule install --hour 10 --minute 0   # reschedule
+    python -m orchestrator.schedule uninstall
 
 ## Env overrides (read by Config.from_env)
 

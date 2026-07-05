@@ -120,9 +120,15 @@ be sliced by policy version. Change the policy → bump the version.
   quarters), implied move from ATM straddle vs. realized-move stats, trend /
   momentum indicators. Agents consume computed features instead of assembling
   them. Automated post-event **labeler** run.
-- **Phase 3 — Scheduler.** Market-calendar-driven automation (launchd or
-  `claude` scheduled routines): pre-market scout, analyst runs T-1 before each
-  event, labeler T+1. The stake repo's `schedule.py` is the reference pattern.
+- **Phase 3 — Scheduler (built 2026-07-05).** `orchestrator/daily.py` is a
+  deterministic tick: scout → labeler (closes positions whose report date has
+  passed) → analyst (events entering the decision window: T-1 for bmo/unknown,
+  T-1 or report day for amc; skipped if the event already has a decision).
+  `orchestrator/schedule.py` installs it as a launchd user agent
+  (`com.earnings.daily`, default 09:45 local — just after the open so quotes
+  are live). Aqua-session-only: the tick needs the user's `claude` login and
+  Robinhood OAuth. PATH is baked into the plist (stake repo lesson: launchd
+  strips PATH and dud runs follow).
 - **Phase 4 — ML sidecar.** Train on the decisions⋈outcomes table (features →
   post-earnings move / P&L). Model output becomes a feature in the context
   pack first (advisory), then the primary signal with Claude as orchestrator
@@ -171,3 +177,12 @@ Keep this section honest — dated entries only, from real runs.
   established interactively in Claude Code (`get_earnings_calendar` returned
   28 entries, Haiku 4.5, one tool call). The orchestrator's launch path is
   viable as designed.
+- **2026-07-05** — **First live agent cycle** (Sonnet 5): scout found one
+  universe event in window (TSM 2026-07-16 bmo, verified) and recorded it;
+  analyst assembled the full snapshot (implied move 9.58% via ATM straddle vs.
+  6-quarter mean abs reaction 2.75%) and submitted decision #1: **pass**,
+  conviction 0.3 — implied move 3.5x historical realized makes long premium
+  poor value. Noted structural gap: policy v0.1 cannot express vol-selling
+  structures; revisit after 7/16 realized move is known.
+- **2026-07-05** — Phase 3 scheduler installed (`com.earnings.daily`, 09:45
+  local). 23 tests passing. Dry-run tick verified correct due/skip logic.

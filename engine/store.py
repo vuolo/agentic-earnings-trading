@@ -169,6 +169,23 @@ class Store:
         ).fetchone()
         return float(row["total"])
 
+    def decisions_for_event(self, event_id: int) -> list[sqlite3.Row]:
+        return self._db.execute(
+            "SELECT * FROM decisions WHERE event_id = ?", (event_id,)
+        ).fetchall()
+
+    def due_closes(self, today: str) -> list[sqlite3.Row]:
+        """Open paper positions whose event report date has passed — the
+        reaction day is over (bmo: report day itself; amc: the day after), so
+        they are due for T+1 close-out and outcome labeling."""
+        return self._db.execute(
+            """SELECT d.*, e.report_date, e.timing FROM decisions d
+               JOIN events e ON e.id = d.event_id
+               WHERE d.status = 'open_paper' AND e.report_date < ?
+               ORDER BY e.report_date, d.symbol""",
+            (today,),
+        ).fetchall()
+
     def recent_decisions(self, limit: int = 5) -> list[sqlite3.Row]:
         return self._db.execute(
             "SELECT * FROM decisions ORDER BY id DESC LIMIT ?", (limit,)

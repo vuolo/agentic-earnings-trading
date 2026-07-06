@@ -77,7 +77,10 @@ evening of agent time and an empty decision history.
 python -m orchestrator.schedule install    # com.earnings.daily (09:24/15:40/16:20/16:50 ET)
                                            # + com.earnings.caffeinate (08:05 weekdays)
 pmset -g sched                             # check existing wake events first!
-sudo pmset repeat wakeorpoweron MTWRFSU 08:00:00   # only if nothing wakes the Mac by 8am
+sudo pmset repeat wakeorpoweron MTWRFSU 06:50:00   # only if nothing already wakes the Mac
+# ⚠ the caffeinate agent's fire times must land ~2min AFTER the wake event —
+# if the wake time changes, update _caffeinate_plist() and reinstall
+# (2026-07-06: wake moved 07:55→06:55; caffeinate re-anchored to 06:57/06:58)
 ```
 
 Machine conditions at fire times: **awake** (caffeinate handles 08:05–17:10

@@ -358,6 +358,18 @@ Keep this section honest — dated entries only, from real runs.
   snapshotting. Policy v0.4.2 marks open exits time-critical. Research
   hypothesis parked for the strategist: fading gap-ups averaged +2.7% (n=7,
   needs shorting + more data).
+- **2026-07-05 (late)** — **Full-scale live probes** (operator-directed):
+  (1) 1 TSLA share round-tripped in the overnight session @ $396.17→$396.14
+  (instant fills, 3¢ spread cost) — 24/5 whole-share execution confirmed at
+  real size; buying power dropped to $96.72 (80% of the account locked to
+  T+1), the settlement lesson at scale. (2) **Investor-profile second-trade
+  blocker discovered and cleared**: Robinhood blocks an agentic account's
+  second trade until the investor questionnaire is done — this would have
+  silently killed the week's first automated entry; operator completed it
+  same night. (3) Fractional $1 order accepted off-hours → queues to the
+  next opening auction (never executes overnight); cancel flow verified
+  clean. Total probe cost: 4¢ for the whole series; all orders tagged
+  placed_agent=agentic.
 - **2026-07-05 (late)** — **Live settlement behavior verified with a real $6
   round trip** (operator-directed): bought 1 LCID @ $6.11 and sold @ $6.10 in
   the overnight 24/5 session (instant fills, zero fees, 1¢ spread cost;

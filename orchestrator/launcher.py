@@ -209,6 +209,15 @@ def run_role(role_name: str, *, symbol: str | None = None,
     print(f"launching {role_name} (model={model}, policy v{version}"
           + (f", symbol={symbol}" if symbol else "") + ")\n")
     try:
-        return subprocess.run(cmd, cwd=str(REPO_ROOT)).returncode
+        # Hard cap per agent run: launchd drops a fire while the same label is
+        # still running, so a hung 16:20 run would silently eat the 16:50
+        # disaster-valve run. 22 minutes guarantees the next fire always gets
+        # its slot. A killed run is safe: queued/placed orders live at the
+        # broker and the next run reconciles via get_equity_orders.
+        return subprocess.run(cmd, cwd=str(REPO_ROOT), timeout=1320).returncode
+    except subprocess.TimeoutExpired:
+        print(f"error: {role_name} run exceeded 22min and was killed — "
+              "next tick will reconcile", file=sys.stderr)
+        return 124
     finally:
         mcp_config.unlink(missing_ok=True)

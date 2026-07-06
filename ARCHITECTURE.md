@@ -291,6 +291,15 @@ Keep this section honest — dated entries only, from real runs.
   snapshotting. Policy v0.4.2 marks open exits time-critical. Research
   hypothesis parked for the strategist: fading gap-ups averaged +2.7% (n=7,
   needs shorting + more data).
+- **2026-07-05** — **Exit execution hardened** (operator questions drove
+  both): (1) morning fire moved 9:31→9:24 and the evening tick now QUEUES a
+  gtc market close after the reaction-day close — exits fill in the 9:30
+  opening auction (the exact backtested `post_open` print) and survive a
+  dead Mac. (2) Stop-losses analyzed and rejected as resting broker orders
+  (don't execute AH/overnight, gap-through, whipsaw harvest — CRDO −11.75%
+  @16:20 → −3.12% @open); replaced with a 16:50-only persistence-checked
+  disaster valve (≥10% AH loss on two quotes, GFV permitting). Policy
+  v0.5.0.
 - **2026-07-05** — **API mechanics verified** (schemas + live tradability
   calls): all 15 universe names fractional-tradable; fractional/dollar orders
   are market+regular-hours only (tool-level, regardless of instrument flags);

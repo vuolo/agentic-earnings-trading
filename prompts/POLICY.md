@@ -1,6 +1,6 @@
 # Trading Policy
 
-Version: 0.4.4
+Version: 0.5.0
 Mode: live when the operator's arm switch is active; paper otherwise
 
 Every decision you submit is stamped with this version. v0.3.0 (operator-
@@ -110,12 +110,19 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   post-report open for BMO and held-overnight AMC; same-day after-hours for
   AMC only when the tick authorizes it (whole-share positions, GFV guard
   clear — the context pack shows both).
-- **Exits at the open are TIME-CRITICAL** (intraday study, 2026-07-05, n=15:
-  exit@9:31 captured +4.72% avg vs +2.69% by 10:00; gap-up winners fade
-  −2.7% in the first 30 minutes). The executor sells first, immediately,
-  before any other work. Nobody waits for a bounce; holding past the first
-  minutes requires a future data-backed policy change, not in-the-moment
-  judgment.
+- **Exits fill IN the opening auction**: the evening tick queues a gtc market
+  close after the reaction-day close (crash-proof), and the 9:24 morning run
+  verifies/places it pre-open — both paths fill at the 9:30 auction print,
+  the exact price the backtests measure. Nobody waits for a bounce (post-open
+  fade: winners −2.7% by 10:00); holding past the open requires a future
+  data-backed policy change, not in-the-moment judgment.
+- **Disaster valve (the only stop-loss)**: 16:50 evening check only — AH loss
+  ≥ 10%, confirmed persistent by a second quote minutes later, GFV
+  permitting, whole shares only → exit immediately in AH. No resting broker
+  stops, ever: they don't execute in the AH/overnight sessions where our risk
+  lives, they fill through gaps at arbitrary prices, and the reaction window
+  whipsaw harvests them (CRDO printed −11.75% at 16:20 and recovered to
+  −3.12% by the open). Protection is sizing + the valve, not stops.
 - The labeler/executor records real fills; note in the thesis if the evidence
   suggests a different exit window, so the strategist can evaluate it — but
   follow this policy until it changes.

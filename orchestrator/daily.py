@@ -278,46 +278,35 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                 print("executor: no entries pending")
 
         elif phase == "evening":
-            candidates = store.due_amc_same_day_closes(today.isoformat())
-            if not candidates:
-                print("executor: no same-day AMC exits to consider")
+            # Evening runs (16:20 + 16:50) do two jobs per open live position
+            # due at the next open:
+            #  1. QUEUE the auction exit now — a market sell placed after the
+            #     close fills in tomorrow's 9:30 opening cross even if the
+            #     morning tick never fires (crash/sleep-proof exits).
+            #  2. DISASTER VALVE (16:50 run only; never 16:20 — peak whipsaw,
+            #     e.g. CRDO -11.75% at 16:20 recovered to -3.12% by the open):
+            #     persistent AH loss >= 10% → exit immediately, GFV/settlement
+            #     permitting.
+            nxt = next_trading_day(today)
+            due = store.due_live_closes(nxt.isoformat())
+            if not due:
+                print("executor: no open live positions due at the next open")
                 return
-            # AH study (2026-07-05, n=13): next-open exits beat every fixed
-            # after-hours time (+5.74% vs +2.81% @16:20); by 16:20 many
-            # reactions are <30% priced. Same-day AH exits are OFF unless the
-            # operator flips them back on (enable-ah-exits).
-            if store.meta_get("ah_exits_enabled", "") != "1":
-                print(f"executor: {len(candidates)} AMC position(s) — holding to the "
-                      "next open per policy (AH study: overnight completes the move); "
-                      "operator can re-enable with enable-ah-exits")
-                return
-            # Settlement guard, by account type:
-            # - cash: GFV — if a live close already happened today, today's
-            #   entry was proceeds-funded; re-selling it today is a violation.
-            # - margin: PDT — max 3 same-day round trips per 5 trading days
-            #   under $25k equity.
-            acct_type = store.meta_get("account_type", "cash")
-            if acct_type == "cash" and store.live_closes_today():
-                print(f"executor: {len(candidates)} AMC exit(s) available but a live "
-                      "close already happened today — same-day re-sale of proceeds "
-                      "risks a good-faith violation (cash account); holding to the "
-                      "next open")
-                return
-            if acct_type == "margin":
-                used = store.day_trades_last_5d()
-                if used + len(candidates) > 3:
-                    print(f"executor: {len(candidates)} AMC exit(s) available but "
-                          f"PDT budget is {used}/3 (margin account under $25k) — "
-                          "holding to the next open")
-                    return
             if not arm:
-                print(f"executor: same-day exits due but {arm_why} — positions "
-                      "ride to the next open")
+                print(f"executor: {len(due)} position(s) due at next open but "
+                      f"{arm_why} — nothing queued")
                 return
-            job = ("sell to close in after-hours (extended-hours LIMIT, whole "
-                   "shares only — skip any position with a fractional part; "
-                   "decision_id symbol): "
-                   + ", ".join(f"#{r['id']} {r['symbol']}" for r in candidates))
+            acct_type = store.meta_get("account_type", "cash")
+            gfv_blocked = acct_type == "cash" and store.live_closes_today() > 0
+            is_late_run = datetime.now().hour * 60 + datetime.now().minute >= 16 * 60 + 45
+            valve = ("DISABLED this run (16:20 window is peak whipsaw — queue only)"
+                     if not is_late_run else
+                     "UNAVAILABLE (cash-account GFV: a live close already happened today)"
+                     if gfv_blocked else "ARMED (>=10% persistent AH loss)")
+            job = (f"queue auction exits; disaster valve {valve} "
+                   "(decision_id symbol action entry): "
+                   + ", ".join(f"#{r['id']} {r['symbol']} {r['action']} @{r['entry_price']}"
+                               for r in due))
             print(f"executor (ARMED until {arm.expires}): {job}")
             if not dry_run:
                 print(f"executor exit {launcher.run_role('executor', symbol=job, model=model)}")

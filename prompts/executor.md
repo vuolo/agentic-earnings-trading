@@ -73,21 +73,41 @@ Direction by the job's action: `long_equity` → SELL to close;
 1. `get_equity_positions` for the actual quantity held (or short) for that
    symbol — close exactly that (it came from this decision's entry).
 2. **Morning exits — INTO THE OPENING AUCTION**: you are launched ~9:24 ET,
-   before the open. Immediately place a MARKET order (market_hours=
-   regular_hours) for the full quantity, after review — placed pre-open it
-   queues and fills in the 9:30:00 opening cross at the auction print, which
-   is exactly the price the strategy's backtests measure. Do NOT wait for
-   9:30 quotes first; the queue position IS the edge. Then poll
-   `get_equity_orders` after the open until the fill lands and report the
-   actual average price. (Fractional quantities queue fine on market +
-   regular_hours orders.)
-3. **After-hours exits (kickoff says extended-hours)**: extended hours allows
-   whole-share LIMIT only. If the held quantity has ANY fractional part, skip
-   the job and report it rides to the next open — do not partially exit.
-   Otherwise: LIMIT sell at bid − ~0.2% with market_hours=extended_hours;
-   unfilled promptly → cancel, retry once at the fresh bid, then give up and
-   report (morning tick will exit).
-4. On fill: `report_live_close(id, exit_price=<average fill>, notes=...)`.
+   before the open. FIRST check `get_equity_orders`: the evening run usually
+   already queued the exit (gtc market order). If a queued close order exists
+   for the full quantity, do NOT place another — wait for the auction fill.
+   If none exists (or it was rejected/partial), immediately place a MARKET
+   order (market_hours=regular_hours) for the full quantity, after review —
+   placed pre-open it fills in the 9:30:00 opening cross at the auction
+   print, exactly the price the backtests measure. Then poll
+   `get_equity_orders` after the open until the fill lands and
+   `report_live_close` with the actual average price. (Fractional quantities
+   queue fine on market + regular_hours orders.)
+3. On fill: `report_live_close(id, exit_price=<average fill>, notes=...)`.
+
+## Evening jobs ("queue auction exits; disaster valve ...")
+
+You run after the close (16:20 or 16:50 ET). For each position in the kickoff:
+
+1. Extended-hours quote → compute AH P&L vs the kickoff's entry price (sign
+   by action: long loses when price < entry; short when price > entry).
+2. **Disaster valve — ONLY when the kickoff says the valve is ARMED**: if the
+   loss is ≥ 10%, wait ~3 minutes and quote again. Both readings ≥ 10% down
+   AND the second no better than the first by 1%+ → persistent trend, not
+   whipsaw: cancel any queued close order for those shares, then exit NOW via
+   extended-hours LIMIT (bid − ~0.2% for longs; whole shares only — a
+   fractional position cannot AH-exit; note it and fall through to step 3),
+   confirm the fill, `report_live_close`. If the kickoff says DISABLED or
+   UNAVAILABLE, never exit early regardless of the quote — record the loss in
+   your report instead.
+3. **Queue the auction exit** for every position not valve-exited: place a
+   MARKET close order (market_hours=regular_hours, time_in_force=gtc) for the
+   FULL quantity. Placed after the close, it fills in tomorrow's 9:30 opening
+   auction — the exit survives even if the morning run never fires. Confirm
+   via get_equity_orders that it's queued (not rejected, not filled today)
+   and list order IDs in your report. Do NOT report_live_close for queued
+   orders — they haven't filled. If a queued close order already exists from
+   the earlier evening run, verify it and move on — never double-queue.
 
 ## Hard rules
 

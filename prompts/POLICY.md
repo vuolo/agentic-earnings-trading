@@ -1,6 +1,6 @@
 # Trading Policy
 
-Version: 0.4.0
+Version: 0.4.1
 Mode: live when the operator's arm switch is active; paper otherwise
 
 Every decision you submit is stamped with this version. v0.3.0 (operator-
@@ -86,9 +86,11 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
 - No specific, defensible edge → submit `pass` with the full snapshot and a
   reference `entry_price`. Passes are dataset rows — never skip submitting.
 
-## Sizing (real-money, ~$150 cash account)
+## Sizing (real-money, ~$500 account — funded 2026-07-05)
 
-- Base **$100**; conviction ≥ 0.80 may size up to **$120** (the arm cap).
+- Base **$150**; conviction ≥ 0.80 may size up to **$250** (the arm cap).
+- Guideline: never over ~50% of equity in one name — the account snapshot in
+  the context pack is the equity reference.
 - **Fractional is first-class**: entries use dollar-notional market orders
   (or whole shares via marketable limit when the price fits the size — the
   executor prefers whole shares because only those can exit after-hours).

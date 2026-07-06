@@ -1,10 +1,11 @@
 # Operator Briefing — 2026-07-05
-_Generated 2026-07-05T23:32:27+00:00 (deterministic; built from the store, not model output)._
+_Generated 2026-07-06T00:05:51+00:00 (deterministic; built from the store, not model output)._
 
 ## Account & risk
-- **LIVE — armed until 2026-08-04** (30d left); live caps $120.00/position, $140.00/day
-- Account: no snapshot yet (first executor run reports it)
-- PDT: 0/3 same-day live round trips used (trailing week)
+- **LIVE — armed until 2026-08-04** (30d left); live caps $250.00/position, $450.00/day
+- Account (executor-reported 2026-07-06T00:05:33+00:00 (operator-verified deposit)): equity $500.00, cash $500.00, buying power $500.00
+- Designated account: ••••8223 ('Agentic', cash — T+1/GFV-guarded, no PDT; shorting not enabled)
+- Live closes today: 0 | same-day round trips this week: 0
 - Today's new exposure: $0.00
 
 ## Open positions
@@ -18,11 +19,17 @@ _Generated 2026-07-05T23:32:27+00:00 (deterministic; built from the store, not m
 ## Plan — next 14 days (and why)
 - **TSM** reports 2026-07-16 bmo: analyst+entry 2026-07-15 ~15:40-15:58 ET, exit post-report open 2026-07-16 09:31 — window per backtest gap stats (see `get_backtest_summary`)
 
+## System health
+- morning tick last ran: never
+- afternoon tick last ran: never
+- evening tick last ran: never
+- ML sidecar: untrained — accumulating dataset (target 25 labeled rows)
+
 ## Longer-term roadmap status
 - Dataset: 0 closed trades + 0 labeled passes | backtests: 90 historical events
-- **ML sidecar (Phase 4)**: trains when ~50 labeled trade outcomes exist — until then every decision/pass/outcome is training data
-- Phase 2 (deterministic feature/indicator engine): NEXT BUILD — moves implied-move/indicator math from agent arithmetic into tested code
-- Phase 5b (live options for bearish leg): after Phase 2
+- **ML sidecar (Phase 4)**: pipeline BUILT and self-activating — trains automatically each morning; advisory until ~50 labeled rows
+- Phase 2 (deterministic indicators): BUILT — compute_indicators / compute_implied_move run server-side
+- Strategy is STOCKS-ONLY (operator decision): live capital goes long equity; bearish theses are paper-only dataset legs (options L2 exists on the account but is deliberately unused)
 - Strategist: reviews policy after every 3 new labeled outcomes (auto)
 
 ## Steering

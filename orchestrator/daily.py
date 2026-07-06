@@ -153,6 +153,25 @@ def _notify(text: str) -> None:
 def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm_why):
     if True:  # keep original indentation depth for the phase blocks below
         if phase == "morning":
+            # LIVE EXITS FIRST — the intraday study (2026-07-05) showed the
+            # post-earnings fade is front-loaded: winners average -2.7% from
+            # the open by 10:00. Every minute between 9:31 and the sell costs
+            # money; monitor/scout/labeler all wait.
+            live_closes = store.due_live_closes(today.isoformat())
+            if live_closes and arm:
+                job = ("close at the open — sell for long_equity, buy-to-cover "
+                       "for short_equity (decision_id symbol action): "
+                       + ", ".join(f"#{r['id']} {r['symbol']} {r['action']}"
+                                   for r in live_closes))
+                print(f"executor (ARMED until {arm.expires}): {job}")
+                if not dry_run:
+                    print(f"executor exit {launcher.run_role('executor', symbol=job, model=model)}")
+            elif live_closes:
+                print(f"executor: {len(live_closes)} live close(s) due but {arm_why} "
+                      "— MANUAL ACTION NEEDED (positions are real)")
+            else:
+                print("executor: no live exits due")
+
             if dry_run:
                 print("monitor: would report account snapshot + reconcile")
             else:
@@ -195,21 +214,6 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                     print(f"labeler exit {launcher.run_role('labeler', symbol=job, model=model)}")
             else:
                 print("labeler: nothing due")
-
-            live_closes = store.due_live_closes(today.isoformat())
-            if live_closes and arm:
-                job = ("close at the open — sell for long_equity, buy-to-cover "
-                       "for short_equity (decision_id symbol action): "
-                       + ", ".join(f"#{r['id']} {r['symbol']} {r['action']}"
-                                   for r in live_closes))
-                print(f"executor (ARMED until {arm.expires}): {job}")
-                if not dry_run:
-                    print(f"executor exit {launcher.run_role('executor', symbol=job, model=model)}")
-            elif live_closes:
-                print(f"executor: {len(live_closes)} live close(s) due but {arm_why} "
-                      "— MANUAL ACTION NEEDED (positions are real)")
-            else:
-                print("executor: no live exits due")
 
             n = store.outcome_count()
             last = int(store.meta_get("strategist_outcome_count", "0") or 0)

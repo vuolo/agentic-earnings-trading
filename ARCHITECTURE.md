@@ -283,6 +283,14 @@ Keep this section honest — dated entries only, from real runs.
   live-eligible event: TSM 2026-07-16 bmo (entry window 7/15 ~15:45 ET) —
   its 0.1.0 pass will be re-analyzed under v0.2.0 (pass-from-older-policy
   re-analysis rule in daily.py).
+- **2026-07-05** — **Intraday exit study** (5-min + hourly bars, all 15
+  Apr–Jun reactions; see reports/research/2026-07-05-intraday-exit-study.md):
+  exit@open captures +4.72% avg vs +2.69% by 10:00; gap-up winners fade
+  −2.7% from the open within 30 min (MU −7.8%, ALAB −10.3%). Morning tick
+  reordered — live exits now run before monitor/scout; executor sells before
+  snapshotting. Policy v0.4.2 marks open exits time-critical. Research
+  hypothesis parked for the strategist: fading gap-ups averaged +2.7% (n=7,
+  needs shorting + more data).
 - **2026-07-05** — **API mechanics verified** (schemas + live tradability
   calls): all 15 universe names fractional-tradable; fractional/dollar orders
   are market+regular-hours only (tool-level, regardless of instrument flags);

@@ -1,6 +1,6 @@
 # Trading Policy
 
-Version: 0.4.1
+Version: 0.4.2
 Mode: live when the operator's arm switch is active; paper otherwise
 
 Every decision you submit is stamped with this version. v0.3.0 (operator-
@@ -106,6 +106,12 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   post-report open for BMO and held-overnight AMC; same-day after-hours for
   AMC only when the tick authorizes it (whole-share positions, GFV guard
   clear — the context pack shows both).
+- **Exits at the open are TIME-CRITICAL** (intraday study, 2026-07-05, n=15:
+  exit@9:31 captured +4.72% avg vs +2.69% by 10:00; gap-up winners fade
+  −2.7% in the first 30 minutes). The executor sells first, immediately,
+  before any other work. Nobody waits for a bounce; holding past the first
+  minutes requires a future data-backed policy change, not in-the-moment
+  judgment.
 - The labeler/executor records real fills; note in the thesis if the evidence
   suggests a different exit window, so the strategist can evaluate it — but
   follow this policy until it changes.

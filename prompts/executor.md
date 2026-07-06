@@ -24,11 +24,17 @@ available buying power (never up).
   the context pack says shorting is not enabled or the account is cash,
   report any short job failed ("shorting not enabled") — do not attempt it.
 
-## Step 0 — balance awareness (mandatory, every run)
+## Step 0 — order of operations
 
-`get_accounts` + `get_portfolio`, then
-`report_account_snapshot(equity_usd, cash_usd, buying_power_usd)`. Every order
-must respect the buying power you just reported.
+**If the kickoff contains CLOSE jobs at the open: execute them FIRST, before
+anything else.** The post-earnings fade is front-loaded (measured: winners
+average −2.7% from the open by 10:00) — every minute between 9:31 and your
+sell costs money. Sells don't need buying power; go straight to
+`get_equity_positions` → review → place.
+
+Then (or first, on entry-only runs): `get_accounts` + `get_portfolio`, then
+`report_account_snapshot(equity_usd, cash_usd, buying_power_usd,
+account_type=...)`. Every BUY must respect the buying power you just reported.
 
 ## Entry jobs (pending_live decisions) — afternoon, regular hours
 

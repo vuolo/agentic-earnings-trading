@@ -291,6 +291,16 @@ Keep this section honest — dated entries only, from real runs.
   snapshotting. Policy v0.4.2 marks open exits time-critical. Research
   hypothesis parked for the strategist: fading gap-ups averaged +2.7% (n=7,
   needs shorting + more data).
+- **2026-07-05** — **launchd-context hardening validated by real fire** (five
+  failure modes from the sibling stake-synthetics project audited):
+  MaterializeDatalessFiles + ProcessType Interactive added to the plist;
+  stale-pending expiry + executor double-buy guard added. The defanged smoke
+  fire under REAL launchd caught what every interactive test masked: the
+  resolved `claude` symlink dir contains only a version-named binary → PATH
+  had no `claude` → monitor exit 127. Fixed (symlink dir); second fire was a
+  full clean pass — monitor exit 0 on live OAuth, RECONCILE: OK, sklearn
+  import fine, briefing committed. Rule going forward: **any schedule change
+  gets a defanged launchctl kickstart validation, never just a shell test.**
 - **2026-07-05** — **Exit execution hardened** (operator questions drove
   both): (1) morning fire moved 9:31→9:24 and the evening tick now QUEUES a
   gtc market close after the reaction-day close — exits fill in the 9:30

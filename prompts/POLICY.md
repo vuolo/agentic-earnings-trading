@@ -1,6 +1,6 @@
 # Trading Policy
 
-Version: 0.6.0
+Version: 0.7.0
 Mode: live when the operator's arm switch is active; paper otherwise
 
 Every decision you submit is stamped with this version. v0.3.0 (operator-
@@ -81,31 +81,38 @@ marked (server) MUST be tool outputs embedded verbatim — never hand-computed:
 
 Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
 
-## Entry rules (v0.2)
+## Entry rules (v0.7 — PARTICIPATE BY DEFAULT, operator directive 2026-07-05)
 
-- Trade only when conviction ≥ **0.65** AND the backtest gap stats support the
-  direction (up_rate ≥ 0.6 for longs in that name, or a specific documented
-  divergence the stats misprice).
-- **BMO (overnight) entries need more**: conviction ≥ **0.70** AND the worst
-  historical gap in the name must not exceed ~2× your intended size's
-  tolerable loss. State this check in the thesis.
+- **The default action is a TRADE in your best-judged direction.** Conviction
+  no longer gates participation — it sets SIZE (see Sizing). At our position
+  sizes, a live trade's information value rivals its worst-case cost; the
+  dataset, strategist, and ML all starve on passes.
+- **A pass now requires an explicit DISQUALIFIER**, stated in the thesis:
+  (a) you genuinely cannot form a directional lean after the full snapshot
+  (true coin-flip); (b) liquidity/tradability defects (wide spreads, screen
+  marginal); (c) the sizing check fails even at minimum size (worst
+  historical gap × min size exceeds ~$40 tolerable loss); (d) an operator
+  directive or gate condition blocks it. "The edge isn't strong" is NOT a
+  disqualifier — that's what small sizing is for.
 - Direction (stocks-only strategy; options deliberately unused):
   - Bullish → `long_equity`.
-  - Bearish → `short_equity` **when the context pack shows shorting ENABLED**
-    (margin account, operator-verified via broker probe, whole shares only);
-    otherwise → `bearish_option`, the paper-only dataset leg. Check the
-    context pack's settlement line before choosing.
-  - **Short entries carry the BMO-grade evidence bar always** (conviction
-    ≥ 0.70), and use the backtest's BEST gap (upside tail) as the risk check
-    — a short's worst case is the stock gapping UP.
-- No specific, defensible edge → submit `pass` with the full snapshot and a
-  reference `entry_price`. Passes are dataset rows — never skip submitting.
+  - Bearish → `short_equity` **when the context pack shows shorting ENABLED**;
+    otherwise → `bearish_option`, the paper-only dataset leg (submit it —
+    bearish paper legs are participation too).
+  - Shorts use the backtest's BEST gap (upside tail) as the risk check — a
+    short's worst case is the stock gapping UP.
 
-## Sizing (real-money, ~$500 account — funded 2026-07-05)
+## Sizing (real-money, ~$500 account — conviction is the dial)
 
-- Base **$150**; conviction ≥ 0.80 may size up to **$250** (the arm cap).
+- **Conviction < 0.55** (leaning, weak): exploration size **$75**.
+- **0.55–0.70**: **$100–150**.
+- **≥ 0.70**: **$150–200**; **≥ 0.80**: up to **$250** (the arm cap).
+- Non-core (screened) names: one tier smaller than the table says.
+- BMO/overnight and short entries: one tier smaller than the table says
+  (overnight gap risk), never above $200 unless core + conviction ≥ 0.85.
 - Guideline: never over ~50% of equity in one name — the account snapshot in
-  the context pack is the equity reference.
+  the context pack is the equity reference. The daily budget ($450) and
+  per-position arm cap are enforced by the gate regardless.
 - **Fractional is first-class**: entries use dollar-notional market orders
   (or whole shares via marketable limit when the price fits the size — the
   executor prefers whole shares because only those can exit after-hours).

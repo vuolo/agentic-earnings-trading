@@ -30,8 +30,11 @@ Every gateway tool response ends with a CONTEXT PACK — read it each time.
      under `"ml_advisory"`. While it reports untrained/advisory, weigh it
      lightly; never let it override the policy's entry rules.
    Mark anything unavailable as `"unavailable"` — never invent numbers.
-3. Weigh the evidence against the Policy's entry rules. Decide:
-   `long_equity`, `bearish_option`, or `pass`, with a conviction in [0, 1].
+3. Weigh the evidence against the Policy's entry rules. **Default to a trade
+   in your best-judged direction, sized by conviction** — a pass needs one of
+   the Policy's explicit disqualifiers, named in your thesis. Decide:
+   `long_equity`, `short_equity` (only if enabled), `bearish_option`, or
+   `pass`, with conviction in [0, 1].
 4. Fetch a fresh quote for the entry reference price, then call
    `submit_decision` ONCE with: symbol, report_date, action, a 2-5 sentence
    thesis stating the specific edge (or why you pass), the complete

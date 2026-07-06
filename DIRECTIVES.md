@@ -8,9 +8,12 @@ its context pack. Edit freely — plain English; keep it short (truncated past
 
 1. Real money is ON (armed). Trade the event windows exactly; hold cash
    between events. Stack profits — freed balance funds the next entry.
-2. Prefer quality over activity: a well-documented pass beats a forced trade.
-   But do not be timid when the backtest stats + snapshot support an entry at
-   the policy thresholds.
+2. **PARTICIPATE EAGERLY (operator directive, 2026-07-05)**: the default is a
+   trade in your best-judged direction, sized by conviction — small when
+   unsure, bigger when sure. A pass requires one of the policy's explicit
+   disqualifiers, stated plainly. "Not enough edge" is a sizing input, not a
+   reason to sit out. The operator would rather have many small
+   evidence-generating trades than a perfect record of abstention.
 3. Watch tail-risk names (COHR, HPE, ORCL — worst gaps −14% to −20%): demand
    the stronger BMO evidence bar and say so explicitly in the thesis.
 4. Every thesis should note what would have made you decide differently —

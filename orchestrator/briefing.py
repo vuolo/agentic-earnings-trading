@@ -51,10 +51,15 @@ def build_briefing(cfg: Config, store: Store) -> str:
     if snap:
         import json
         s = json.loads(snap)
+        cash = float(s.get("cash_usd", 0))
+        bp = float(s.get("buying_power_usd", 0))
         md.append(f"- Account (executor-reported {s.get('reported_at', '?')}): "
                   f"equity {_fmt_money(float(s.get('equity_usd', 0)))}, "
-                  f"cash {_fmt_money(float(s.get('cash_usd', 0)))}, "
-                  f"buying power {_fmt_money(float(s.get('buying_power_usd', 0)))}")
+                  f"cash {_fmt_money(cash)}, buying power {_fmt_money(bp)}")
+        if cash - bp > 0.01:
+            md.append(f"- ⏳ Unsettled proceeds: {_fmt_money(cash - bp)} — "
+                      "tradeable next trading day (T+1); capital cycles every "
+                      "other day on this cash account")
     else:
         md.append("- Account: no snapshot yet (first executor run reports it)")
     acct = store.meta_get("account_number", "")

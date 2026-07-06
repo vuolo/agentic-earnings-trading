@@ -113,6 +113,13 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
 - Guideline: never over ~50% of equity in one name — the account snapshot in
   the context pack is the equity reference. The daily budget ($450) and
   per-position arm cap are enforced by the gate regardless.
+- **T+1 capital cycle (verified live 2026-07-05)**: this cash account
+  EXCLUDES sale proceeds from buying power until the next trading day —
+  this morning's exit cannot fund this afternoon's entry. Practical model:
+  capital deployed today is re-deployable the day after tomorrow's open.
+  Size to the context pack's `buying power` number only (never `cash`), and
+  expect roughly half the account to be cycling on busy weeks — that's
+  by design, not an error.
 - **Fractional is first-class**: entries use dollar-notional market orders
   (or whole shares via marketable limit when the price fits the size — the
   executor prefers whole shares because only those can exit after-hours).

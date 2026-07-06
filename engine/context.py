@@ -72,12 +72,21 @@ def build_context_pack(cfg: Config, store: Store) -> str:
     if snap:
         try:
             s = json.loads(snap)
-            lines.append(
+            cash = float(s.get("cash_usd", 0))
+            bp = float(s.get("buying_power_usd", 0))
+            line = (
                 f"account (executor-reported {s.get('reported_at', '?')}): "
                 f"equity ${float(s.get('equity_usd', 0)):,.2f} | "
-                f"cash ${float(s.get('cash_usd', 0)):,.2f} | "
-                f"buying power ${float(s.get('buying_power_usd', 0)):,.2f}"
+                f"cash ${cash:,.2f} | buying power ${bp:,.2f}"
             )
+            if cash - bp > 0.01:
+                line += (
+                    f" | UNSETTLED ${cash - bp:,.2f} (T+1 — verified 2026-07-05: "
+                    "this cash account EXCLUDES sale proceeds from buying power "
+                    "until the next trading day; buying_power is the ONLY "
+                    "sizing base)"
+                )
+            lines.append(line)
         except (ValueError, TypeError):
             pass
     else:

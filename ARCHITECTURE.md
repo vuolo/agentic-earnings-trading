@@ -358,6 +358,17 @@ Keep this section honest — dated entries only, from real runs.
   snapshotting. Policy v0.4.2 marks open exits time-critical. Research
   hypothesis parked for the strategist: fading gap-ups averaged +2.7% (n=7,
   needs shorting + more data).
+- **2026-07-05 (late)** — **Live settlement behavior verified with a real $6
+  round trip** (operator-directed): bought 1 LCID @ $6.11 and sold @ $6.10 in
+  the overnight 24/5 session (instant fills, zero fees, 1¢ spread cost;
+  orders tagged placed_agent=agentic). Result: cash returned to $499.99 but
+  **buying power stayed at $493.89 — this cash account EXCLUDES unsettled
+  sale proceeds from buying power until T+1**. Implications encoded: context
+  pack + briefing now surface the unsettled gap (cash − buying_power);
+  policy documents the 2-trading-day capital cycle; executor sizing to
+  broker buying_power was already mechanically safe. Bonus finding:
+  overnight-session support varies per name (LCID/F tradable, PLUG/NIO not)
+  — session-awareness validated.
 - **2026-07-05** — **launchd-context hardening validated by real fire** (five
   failure modes from the sibling stake-synthetics project audited):
   MaterializeDatalessFiles + ProcessType Interactive added to the plist;

@@ -26,7 +26,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PROMPTS = REPO_ROOT / "prompts"
 ROBINHOOD_URL = "https://agent.robinhood.com/mcp/trading"
-DEFAULT_MODEL = "claude-opus-4-8"
+DEFAULT_MODEL = "claude-fable-5"
+FALLBACK_MODEL = "claude-opus-4-8"  # used when the primary is unavailable/overloaded
 
 # Read-only market-data tools an analyst may use. place_*_order / cancel_* are
 # deliberately absent and must stay absent in v1 (CLAUDE.md rule 1).
@@ -212,6 +213,10 @@ def run_role(role_name: str, *, symbol: str | None = None,
     cmd = [
         "claude", "-p", kickoff,
         "--model", model,
+    ]
+    if model != FALLBACK_MODEL:
+        cmd += ["--fallback-model", FALLBACK_MODEL]
+    cmd += [
         "--mcp-config", str(mcp_config),
         "--strict-mcp-config",
         "--append-system-prompt", mission,

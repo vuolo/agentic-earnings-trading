@@ -81,7 +81,7 @@ The system is designed to run, learn, and trade autonomously:
 ```
 orchestrator/daily.py (phased tick) · main.py (operator CLI) · schedule.py (launchd)
    │  temp MCP config + per-role tool allowlist + mission (+ POLICY.md [+ PLAYBOOK.md])
-   │  Opus 4.8 default; monitor + clerical jobs on Sonnet 5; 22-min hard timeout/run
+   │  Fable 5 default (fallback Opus 4.8); monitor + clerical on Sonnet 5; 22-min timeout/run
    ▼
 claude -p  (headless Claude Code, per-role mission prompt)
    │
@@ -116,13 +116,13 @@ claude -p  (headless Claude Code, per-role mission prompt)
 
 | Role | Model | Mission | Order tools? |
 |---|---|---|---|
-| **scout** | Opus | market-wide calendar sweep + liquidity screening (price/volume/tradability per candidate) | no |
-| **analyst** | Opus | one event per run: server-computed features, WebSearch sentiment, backtest+playbook alignment, ML advisory → submit_decision | no |
-| **executor** | Opus | ONLY armed, ONLY kickoff-named jobs, ONLY the designated account: auction-exit queue/verify, entries, valve, snapshot | **yes (sole role)** |
-| **labeler** | Opus | paper closes, pass counterfactuals, realized backtest rows | no |
+| **scout** | Fable→Opus | market-wide calendar sweep + liquidity screening (price/volume/tradability per candidate) | no |
+| **analyst** | Fable→Opus | one event per run: server-computed features, WebSearch sentiment, backtest+playbook alignment, ML advisory → submit_decision | no |
+| **executor** | Fable→Opus | ONLY armed, ONLY kickoff-named jobs, ONLY the designated account: auction-exit queue/verify, entries, valve, snapshot | **yes (sole role)** |
+| **labeler** | Fable→Opus | paper closes, pass counterfactuals, realized backtest rows | no |
 | **monitor** | Sonnet | daily snapshot + broker⇄store `RECONCILE: OK/MISMATCH` | no |
-| **strategist** | Opus | gated self-revision of POLICY.md + PLAYBOOK.md | no |
-| **backtester** | Opus | historical + realized gap/drift backfills | no |
+| **strategist** | Fable→Opus | gated self-revision of POLICY.md + PLAYBOOK.md | no |
+| **backtester** | Fable→Opus | historical + realized gap/drift backfills | no |
 | **mlbackfill** | Sonnet (one-off) | reconstructed ML training rows | no |
 
 ## 3. Data model (SQLite, `datasets/earnings.sqlite3`)

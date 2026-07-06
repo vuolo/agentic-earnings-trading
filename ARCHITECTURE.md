@@ -33,27 +33,32 @@ These are load-bearing; don't erode them.
    labeled after the event. This is the ML sidecar's training set; its
    integrity outranks convenience.
 5. **Paper until proven.** The system starts in paper mode. Live order placement
-   is not implemented in v1 and the risk gate rejects any non-paper mode. When
-   live trading arrives (Phase 5), it will be opt-in per run, budget-capped,
-   and off by default — the same "default-safe, flag to arm" posture as the
-   reference repo's guard during scaffolding.
+   exists only behind the operator's time-boxed arm switch; disarmed (or
+   expired) means everything degrades safely to paper. Armed live trading
+   (since 2026-07-05) still runs under caps tighter than the engine's, and
+   re-arming is always a deliberate operator act — never automatic.
 
 ## 1.5 The breathing loop (operating model)
 
 The system is designed to run, learn, and trade autonomously:
 
 ```
-        ┌──────────────────────────────────────────────────────┐
-        │                 daily tick (launchd)                 │
-        │  scout → labeler → analyst → executor → strategist   │
-        └──────────────────────────────────────────────────────┘
- scout:      keeps the earnings calendar fresh
- labeler:    closes due paper positions; labels PASS counterfactuals
-             (passes teach the dataset too — what was avoided or missed)
- analyst:    one decision per event entering its window, full snapshot
- executor:   REAL orders — runs only while the operator's arm switch is on
- strategist: every ≥3 new labeled outcomes, reviews the dataset and revises
-             POLICY.md itself (version bump + git commit = audit trail)
+   launchd fires (ET): 09:24 morning · 15:40 afternoon · 16:20 + 16:50 evening
+   (com.earnings.caffeinate holds the Mac awake 08:05→~17:10 weekdays)
+
+ morning:   executor FIRST (verify/place exits pre-open → 9:30 auction fills)
+            → monitor (real snapshot + RECONCILE) → scout (market-wide sweep)
+            → labeler (paper closes, pass counterfactuals, realized backtest
+            rows) → strategist (gated) → ML retrain → briefing commit
+ afternoon: analyst per due event (core first, screened next, capped/day)
+            → executor entries fill 15:45–15:58
+ evening:   queue tomorrow's auction exit (gtc market close — crash-proof)
+            + disaster valve at 16:50 (≥10% persistent AH loss)
+
+ strategist: every ≥3 new labeled outcomes, revises POLICY.md AND PLAYBOOK.md
+             itself (validated tools, version bump / rationale, git commits)
+ mlbackfill: reconstructs historical training rows (indicators as-of T-1 +
+             realized gap labels) so the ML trains before live rows accumulate
 ```
 
 **What never becomes autonomous** (the grip points):
@@ -74,63 +79,90 @@ The system is designed to run, learn, and trade autonomously:
 ## 2. System shape
 
 ```
-orchestrator/main.py  (CLI: scout | analyze SYMBOL | status | close)
-   │  builds temp MCP config + role tool allowlist + prompt (mission + POLICY.md)
+orchestrator/daily.py (phased tick) · main.py (operator CLI) · schedule.py (launchd)
+   │  temp MCP config + per-role tool allowlist + mission (+ POLICY.md [+ PLAYBOOK.md])
+   │  Opus 4.8 default; monitor + clerical jobs on Sonnet 5; 22-min hard timeout/run
    ▼
 claude -p  (headless Claude Code, per-role mission prompt)
    │
-   ├── mcp: robinhood-trading (remote HTTP, OAuth) — READ-ONLY tools per allowlist
-   │       quotes · historicals · fundamentals · earnings calendar/results ·
-   │       option chains/quotes · search
-   │       (place_*_order / cancel_* are NEVER in an agent allowlist in v1)
+   ├── mcp: robinhood-trading (remote HTTP, OAuth) — allowlisted per role;
+   │       order tools exist ONLY in the executor role
    │
-   └── mcp: earnings gateway (local stdio, gateway/mcp_server.py)
-           get_context_pack · record_earnings_event · submit_decision ·
-           close_paper_position
-           │  submit_decision runs the RISK GATE server-side; approved
-           │  decisions become paper positions; everything lands in the store
+   └── mcp: earnings gateway (local stdio, gateway/mcp_server.py) — only write path
+           context: get_context_pack (appended to every mutating response)
+           calendar: record_earnings_event (+ liquidity screen fields)
+           deciding: submit_decision (RISK GATE server-side) · get_backtest_summary ·
+                     compute_indicators · compute_implied_move · get_ml_prediction
+           executing: get_pending_executions · report_execution · report_live_close ·
+                     report_account_snapshot
+           labeling: close_paper_position · label_pass_outcome · record_backtest_result ·
+                     record_training_row
+           learning: get_performance_summary · get_labeled_decisions ·
+                     propose_policy_update · propose_playbook_update
            ▼
-       engine/  (deterministic, unit-tested)
-           config.py  — mode, limits, universe, policy version (env-overridable)
-           risk.py    — RiskGate: position cap, daily budget, max open,
-                        universe membership, duplicate check, paper-only
-           store.py   — SQLite: events, decisions (+feature snapshots), outcomes
-           context.py — CONTEXT PACK builder (shared by gateway + CLI status)
+       engine/  (deterministic, unit-tested — no AI in this layer)
+           config.py     — mode, limits, universe/macro/screen thresholds (env)
+           risk.py       — RiskGate: caps (min of engine+arm), budget, max open,
+                           core-or-screened universe, duplicate, short enable
+           arming.py     — operator-only live switch (.arm-live.json, time-boxed)
+           store.py      — SQLite: events(+screen), decisions, outcomes,
+                           backtests, training_rows, meta
+           indicators.py — RSI/ATR/vol/z-score/trend/implied-move math
+           ml.py         — LogReg sidecar: daily retrain, JSON model, CV-scored
+           context.py    — CONTEXT PACK builder (+ DIRECTIVES.md injection)
 ```
 
-### Agent roles (v1)
+### Agent roles
 
-| Role | Mission | Robinhood tools | Gateway tools |
+| Role | Model | Mission | Order tools? |
 |---|---|---|---|
-| **scout** | Sync the next ~14 days of earnings events for the universe into the store | `get_earnings_calendar`, `search`, `get_equity_quotes` | `get_context_pack`, `record_earnings_event` |
-| **analyst** | Deep-dive one symbol's upcoming event; build the feature snapshot; submit a decision (`long_equity` / `bearish_option` / `pass`) | read-only market-data set | `get_context_pack`, `submit_decision` |
-
-Later roles: **labeler** (post-event outcome labeling), **executor** (live orders,
-Phase 5 only), **portfolio reviewer**.
+| **scout** | Opus | market-wide calendar sweep + liquidity screening (price/volume/tradability per candidate) | no |
+| **analyst** | Opus | one event per run: server-computed features, WebSearch sentiment, backtest+playbook alignment, ML advisory → submit_decision | no |
+| **executor** | Opus | ONLY armed, ONLY kickoff-named jobs, ONLY the designated account: auction-exit queue/verify, entries, valve, snapshot | **yes (sole role)** |
+| **labeler** | Opus | paper closes, pass counterfactuals, realized backtest rows | no |
+| **monitor** | Sonnet | daily snapshot + broker⇄store `RECONCILE: OK/MISMATCH` | no |
+| **strategist** | Opus | gated self-revision of POLICY.md + PLAYBOOK.md | no |
+| **backtester** | Opus | historical + realized gap/drift backfills | no |
+| **mlbackfill** | Sonnet (one-off) | reconstructed ML training rows | no |
 
 ## 3. Data model (SQLite, `datasets/earnings.sqlite3`)
 
 - **events** — `(symbol, report_date)` unique; `timing ∈ {bmo, amc, unknown}`;
-  raw calendar payload kept as JSON.
-- **decisions** — one row per agent verdict: action
-  (`long_equity | bearish_option | pass`), size, entry price, conviction,
-  thesis, **features JSON** (the snapshot the agent saw), policy version,
-  risk verdict, status (`pass | rejected | open_paper | closed_paper`).
+  raw calendar payload as JSON; `screened` + `screen` (price/volume/
+  tradability) for the market-wide liquidity gate.
+- **decisions** — one row per agent verdict: action (`long_equity |
+  short_equity | bearish_option | pass`), size, entry price, conviction,
+  thesis, **features JSON**, policy version, risk verdict, status
+  (`pass | rejected | open_paper | closed_paper | pending_live | open_live |
+  closed_live | exec_failed`), exec detail.
 - **outcomes** — exit price, realized move %, P&L, notes; labeled after the
-  event. Joined to decisions, this is the training table.
+  event (incl. pass counterfactuals). Joined to decisions = live training data.
+- **backtests** — per past event: pre_close / post_open / post_close (+ raw);
+  self-feeds from every realized event.
+- **training_rows** — reconstructed historical ML rows (features as-of T-1,
+  label = realized gap); unioned into the ML dataset.
+- **meta** — account snapshot/type, designated account, short/strategist
+  gates, tick health, last error.
 
 Timestamps are UTC ISO-8601. "Today" for the daily risk budget is the UTC day.
 
-## 3.5 Live strategy (operator-directed, 2026-07-05 — policy v0.2.0)
+## 3.5 Live strategy (operator-directed, 2026-07-05 — policy v0.6.x)
 
-Real capital (~$150 account, live caps $120/position, $140/day). Event-window
-gap capture, cash-first:
+Real capital ($500 cash account ••••8223 'Agentic'; live caps $250/position,
+$450/day, armed to 2026-08-04). Event-window gap capture, cash-first,
+market-wide with a screened gate:
 
 - **AMC**: decide + enter on the afternoon tick (fills ~15:45–15:58 ET before
-  the close); exit same-day after-hours on the evening tick when the PDT
-  budget allows, else next open. Minutes-to-hours exposure.
-- **BMO**: decide + enter T-1 afternoon; exit at the post-report open on the
-  morning tick. Overnight exposure through the print — higher evidence bar.
+  the close); hold through the print; **exit in the next 9:30 opening
+  auction** (AH study: next-open +5.74% beat every fixed AH exit). Only
+  early-exit path: the 16:50 disaster valve (≥10% persistent AH loss,
+  whole shares, GFV permitting).
+- **BMO**: decide + enter T-1 afternoon; exit in the post-report opening
+  auction. Overnight exposure through the print — higher evidence bar
+  (conviction ≥0.70, worst-gap-vs-sizing check).
+- **Exit execution**: the evening tick QUEUES a gtc market close after the
+  reaction-day close (fills in tomorrow's auction even if the Mac dies); the
+  9:24 morning run verifies/places and reports actual fills.
 - **Backtest alignment**: the backtests table stores per-event pre_close /
   post_open / post_close for past reports; `get_backtest_summary` turns that
   into gap and drift stats the analyst must weigh (up_rate, worst gap vs.
@@ -152,9 +184,19 @@ gap capture, cash-first:
   price fits the size — those can exit after-hours — else dollar-notional
   market. All order tools use the designated account only.
 
-Tick schedule (launchd, local = ET): **09:31** morning (exits at the open,
-labeling, scout, strategist) · **15:40** afternoon (analysis + entries) ·
-**16:50** evening (authorized AMC after-hours exits).
+- **Market-wide universe (v0.6.0)**: core 15 AI/data-center names always
+  tradeable; any other earnings-calendar name only via the scout-recorded,
+  gate-enforced liquidity screen (price ≥ $5, avg vol ≥ 500k, tradeable) with
+  reduced sizing, a higher conviction bar, and mandatory backtest backfill.
+  Session profiles differ per stock (24h / extended / regular-only) — the
+  executor checks tradability before any extended-hours action; entries and
+  auction exits are regular-hours and universal.
+
+Tick schedule (launchd, local = ET): **09:24** morning (auction exits first,
+then monitor/scout/labeler/strategist/ML/briefing) · **15:40** afternoon
+(analysis + entries) · **16:20 + 16:50** evening (exit queueing + disaster
+valve). Per-run 22-min timeout; launchd plist hardened
+(MaterializeDatalessFiles, Interactive QoS, symlink-safe PATH).
 
 ## 4. Trading constraints & simplifications
 
@@ -167,7 +209,13 @@ labeling, scout, strategist) · **15:40** afternoon (analysis + entries) ·
   it just fetched; the gateway fills at that price. Good enough for dataset
   bootstrapping; slippage modeling comes later.
 - **Risk limits (defaults, env-overridable):** $1,000 per position ·
-  $2,500 new exposure per UTC day · 5 open positions max · universe allowlist.
+  $2,500 new exposure per UTC day · 5 open positions max · core-universe OR
+  screened-event requirement — always intersected with the tighter arm caps
+  in live mode.
+- **Shorting**: built end-to-end (`short_equity`, whole shares, buy-to-cover)
+  but gate-blocked until the operator's margin conversion lands AND a broker
+  probe passes AND `enable-shorting --confirm` is run (FINRA $2k minimum
+  likely blocks at current equity). Until then bearish = paper legs.
 
 ## 5. Policy
 
@@ -191,15 +239,14 @@ be sliced by policy version. Change the policy → bump the version.
   (standard keys the ML trains on). Analyst sentiment now uses the WebSearch
   builtin with cited headlines. Labeler feeds realized events back into the
   backtests table; Monday morning refresh completes them.
-- **Phase 3 — Scheduler (built 2026-07-05).** `orchestrator/daily.py` is a
-  deterministic tick: scout → labeler (closes positions whose report date has
-  passed) → analyst (events entering the decision window: T-1 for bmo/unknown,
-  T-1 or report day for amc; skipped if the event already has a decision).
-  `orchestrator/schedule.py` installs it as a launchd user agent
-  (`com.earnings.daily`, default 09:45 local — just after the open so quotes
-  are live). Aqua-session-only: the tick needs the user's `claude` login and
-  Robinhood OAuth. PATH is baked into the plist (stake repo lesson: launchd
-  strips PATH and dud runs follow).
+- **Phase 3 — Scheduler (built 2026-07-05, hardened same day).**
+  `orchestrator/daily.py` phased ticks (see §1.5) via launchd
+  (`com.earnings.daily`, fires 09:24/15:40/16:20/16:50 ET) +
+  `com.earnings.caffeinate` (08:05 weekdays, holds the sleeping-prone Mac
+  awake through market hours). Aqua-session-only. Hardening validated by a
+  real defanged launchd fire: MaterializeDatalessFiles, Interactive QoS,
+  symlink-safe PATH, 22-min per-run timeout, stale-pending expiry,
+  holiday/half-day calendar.
 - **Phase 4 — ML sidecar (pipeline built 2026-07-05, self-activating).**
   `engine/ml.py`: logistic regression on standardized snapshot features →
   P(post-event move up), CV-scored, saved as plain JSON (pure-Python
@@ -208,12 +255,19 @@ be sliced by policy version. Change the policy → bump the version.
   analyst's toolset from day one and reports its own untrained state
   honestly. Graduation from advisory to primary signal is a strategist +
   operator decision based on CV accuracy vs. base rate.
-- **Phase 5a — Live execution scaffolding (built 2026-07-05, DISARMED).**
-  Executor role (equity only: buy limit with 1% price guard, sell-to-close,
-  review-before-place, real fills reported back), `pending_live → open_live →
-  closed_live` lifecycle, arm switch + arm-aware risk gate. Bearish stays a
-  paper leg until live options execution exists. Arming is the operator's
-  single release lever; off by default, forever.
+- **Phase 5a — Live execution (built 2026-07-05; ARMED same day by operator
+  instruction, $250/$450 caps to 2026-08-04).** Executor role (fractional-
+  first entries, auction-exit queueing, disaster valve, double-buy guard,
+  designated-account-only, UUID idempotency), `pending_live → open_live →
+  closed_live` lifecycle, arm switch + arm-aware gate. Re-arming is always a
+  deliberate operator act.
+- **Phase 6 — Market-wide expansion (built 2026-07-05, policy v0.6.0).**
+  Scout sweeps the whole earnings calendar; non-core names pass a
+  gate-enforced liquidity screen; per-day analyst cap; auto backtest
+  backfill for new names; per-stock session awareness. Strategist now
+  maintains PLAYBOOK.md as well as POLICY.md; mlbackfill reconstructs
+  historical training rows so the ML sidecar trains ahead of live-row
+  accumulation.
 - **Phase 5b — Live options execution (SHELVED by operator decision,
   2026-07-05).** The strategy is stocks-only: live capital goes long equity,
   bearish theses stay paper-only dataset legs. The Agentic account has option
@@ -227,25 +281,38 @@ agentic-earnings-trading/
 ├── ARCHITECTURE.md          ← this document
 ├── CLAUDE.md                ← session primer (auto-loaded by Claude Code)
 ├── README.md                ← overview + quick start
-├── .mcp.json                ← Robinhood MCP (project scope, for interactive sessions)
-├── pyproject.toml
-├── engine/                  ← deterministic core (unit-tested)
-│   ├── config.py            ← Config / RiskLimits, env overrides
-│   ├── risk.py              ← RiskGate
-│   ├── store.py             ← SQLite store (events / decisions / outcomes)
-│   └── context.py           ← CONTEXT PACK builder
-├── gateway/
-│   └── mcp_server.py        ← FastMCP stdio server; risk gate lives here
+├── DIRECTIVES.md            ← operator steering (injected into every context pack)
+├── .mcp.json                ← Robinhood MCP (project scope, interactive sessions)
+├── pyproject.toml           ← deps incl. mcp, scikit-learn, numpy
+├── engine/                  ← deterministic core (no AI; unit-tested)
+│   ├── config.py            ← Config/RiskLimits/universe/macro/screen thresholds
+│   ├── risk.py              ← RiskGate (server-side, un-promptable)
+│   ├── arming.py            ← operator-only live switch (.arm-live.json)
+│   ├── store.py             ← SQLite: events/decisions/outcomes/backtests/
+│   │                          training_rows/meta (+ migrations)
+│   ├── indicators.py        ← RSI/ATR/vol/z/trend/implied-move math
+│   ├── ml.py                ← LogReg sidecar (daily retrain, JSON model)
+│   └── context.py           ← CONTEXT PACK builder + DIRECTIVES injection
+├── gateway/mcp_server.py    ← the agents' only write path (all tools + gate)
 ├── orchestrator/
-│   ├── launcher.py          ← role defs, MCP config, claude -p invocation
-│   └── main.py              ← CLI entry point
+│   ├── launcher.py          ← role defs/allowlists/models, claude -p, timeout
+│   ├── daily.py             ← phased ticks + guards (stale-pending, GFV/PDT,
+│   │                          holidays, analyst cap, health, notifications)
+│   ├── schedule.py          ← launchd install (daily + caffeinate, hardened)
+│   ├── briefing.py          ← deterministic operator briefing
+│   └── main.py              ← CLI (see CLAUDE.md for full command list)
 ├── prompts/
-│   ├── POLICY.md            ← versioned trading policy
-│   ├── scout.md             ← scout mission prompt
-│   └── analyst.md           ← analyst mission prompt
-├── tests/                   ← pytest (risk gate + store)
-├── datasets/                ← SQLite + exports (gitignored)
-└── logs/                    ← run logs (gitignored)
+│   ├── POLICY.md            ← versioned trading policy (strategist-maintained)
+│   ├── PLAYBOOK.md          ← per-symbol evidence (strategist-maintained)
+│   └── *.md                 ← role missions: scout/analyst/executor/labeler/
+│                              monitor/strategist/backtester/ml-backfill
+├── reports/
+│   ├── BRIEFING.md          ← auto-committed daily operator briefing
+│   └── research/            ← dated studies + reproducible scripts
+├── tests/                   ← pytest (63 tests: gate/store/flows/ml/indicators)
+├── datasets/                ← SQLite (gitignored) — the ML's training source
+├── models/                  ← model.json (gitignored)
+└── logs/                    ← run + launchd logs (gitignored)
 ```
 
 ## 8. Verified findings (dated)

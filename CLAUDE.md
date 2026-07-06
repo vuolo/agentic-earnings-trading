@@ -1,110 +1,104 @@
 # CLAUDE.md — session primer
 
-You are working on **agentic-earnings-trading**: Claude-orchestrated trading
-around earnings events (BMO/AMC), AI/data-center universe first. Read
-`ARCHITECTURE.md` for full design; this file is the fast orientation.
+You are working on **agentic-earnings-trading**: Claude-orchestrated,
+real-money trading around earnings events. Read `ARCHITECTURE.md` for full
+design; this file is the fast orientation.
 
 ## The 30-second orientation
 
-Headless agent runs (`claude -p`) analyze upcoming earnings using **read-only**
-Robinhood MCP tools and submit decisions to a **local gateway MCP server**. The
-gateway runs a **server-side risk gate** and records everything — decisions
-with their full feature snapshots, then labeled outcomes — into SQLite. That
-dataset will train an ML sidecar (Phase 4).
+Headless agent runs (`claude -p`, Opus 4.8 default / Sonnet for clerical
+roles) analyze earnings events using read-only Robinhood MCP tools and act
+through a **local gateway MCP server** whose **server-side risk gate** has the
+final word. Everything — decisions with full feature snapshots, outcomes,
+pass counterfactuals, reconstructed training rows — lands in SQLite and feeds
+a self-retraining ML sidecar plus a strategist that revises the trading
+policy and per-symbol playbook itself (git-committed).
 
-**LIVE since 2026-07-05** (operator-armed; ~$150 account; caps $120/position,
-$140/day; arm expires 2026-08-04 — re-arm consciously, don't auto-renew).
-Strategy = policy v0.2.0 event-window gap capture: AMC enter ~15:45 ET report
-day / exit after-hours or next open; BMO enter T-1 close / exit post-report
-open. Three ticks daily: 09:31 exits · 15:40 entries · 16:50 AMC after-hours
-exits (PDT-budgeted).
+**LIVE since 2026-07-05** (operator-armed; account ••••8223 'Agentic', cash,
+$500; caps $250/position, $450/day; arm expires **2026-08-04** — re-arm is a
+deliberate operator act, never automatic).
+
+**Strategy (policy v0.6.x, evidence-locked — see reports/research/)**:
+earnings-gap capture, market-wide. AMC: enter 15:45–15:58 ET on report day.
+BMO: enter 15:45–15:58 the prior trading day. ALL exits fill in the next
+9:30 **opening auction** (queued gtc market close from the evening tick;
+verified/placed at the 9:24 pre-open run). Only early exit: the 16:50
+disaster valve (≥10% persistent AH loss). No resting broker stops (whipsaw
+harvest + no AH execution + gap-through). Hold cash between events.
+
+**Ticks (launchd, ET)**: 09:24 morning (exits→monitor→scout→labeler→
+strategist→ML→briefing) · 15:40 afternoon (analysis + entries) · 16:20/16:50
+evening (exit queueing + valve). `com.earnings.caffeinate` holds the Mac
+awake 08:05–17:10 weekdays. Per-run 22-min timeout.
 
 ## Critical rules — memorize before touching anything
 
-1. **Capital rules live in `engine/risk.py`, never in prompts.** Prompts guide
-   quality; the gate enforces safety. Never soften, bypass, or duplicate gate
-   logic in a prompt. Only the **executor** role carries order tools, and the
-   tick launches it only while the arm switch is active — never add order
-   tools to scout/analyst/labeler/strategist.
-2. **The arm switch is the operator's alone.** Live orders require an
-   unexpired `.arm-live.json` (written only by
-   `python -m orchestrator.main arm-live --confirm`; gitignored; time-boxed;
-   live caps tighter than engine caps). No agent tool may create, modify, or
-   read around it. Disarmed ⇒ everything is paper. Never build a path that
-   arms programmatically.
-3. **Dataset integrity outranks convenience.** Every `submit_decision` —
-   including `pass` — must carry the real feature snapshot and gets stamped
-   with the policy version. Don't backfill, edit, or delete decision rows;
-   corrections go in as new rows or outcome notes. Passes get counterfactual
-   labels after their event — that's dataset, not busywork.
-4. **Policy self-improvement is versioned and audited.** The strategist may
-   rewrite `prompts/POLICY.md` only through `propose_policy_update` (version
-   bump + required sections validated server-side, git-committed with
-   rationale). It cannot touch engine caps, allowlists, arming, or code.
-5. **Bearish = options, never equity shorts.** Robinhood doesn't support
-   shorting. Bearish stays a paper leg (inverse delta-one proxy) even in live
-   mode, until Phase 5b builds real options execution.
+1. **Capital rules live in `engine/risk.py`, never in prompts.** Only the
+   **executor** role carries order tools; it runs only while armed, only on
+   the designated account, only on kickoff-named jobs. Never add order tools
+   to any other role.
+2. **The arm switch is the operator's alone** (`engine/arming.py`,
+   `.arm-live.json`, gitignored, time-boxed). No agent tool may touch it;
+   never build a path that arms programmatically. Same for
+   `enable-shorting` (currently OFF: cash account, margin conversion
+   pending, FINRA $2k; bearish = paper legs until the operator clears it).
+3. **Dataset integrity outranks convenience.** Every submit_decision —
+   including `pass` — carries the real feature snapshot (server-computed
+   indicators/implied move embedded verbatim) and the policy version. Never
+   backfill/edit/delete decision rows. Training-row reconstruction must
+   never include reaction-day bars (lookahead leakage).
+4. **Self-improvement is versioned and audited.** The strategist edits
+   POLICY.md / PLAYBOOK.md only through the validated gateway tools
+   (version bump / rationale enforced, git-committed). It cannot touch
+   engine caps, allowlists, arming, or code.
+5. **Market-wide, but screened.** Core 15 names always tradeable; any other
+   earnings name only when its event passed the scout-recorded liquidity
+   screen (gate-enforced), with reduced sizing and mandatory backtest
+   backfill. Check per-stock session support before any extended-hours
+   action.
+6. **Any schedule/launchd change gets a defanged `launchctl kickstart`
+   validation** — interactive shells mask launchd failures (proven: the
+   claude-PATH bug only appeared under a real fire).
 
 ## Key files
 
-    engine/config.py         Config/RiskLimits + EARNINGS_* env overrides
-    engine/risk.py           RiskGate — position cap, daily budget, max open,
-                             universe, duplicate, paper-only
-    engine/store.py          SQLite: events / decisions / outcomes (UTC ISO)
-    engine/context.py        CONTEXT PACK builder (gateway + CLI `status`)
-    gateway/mcp_server.py    FastMCP stdio: get_context_pack,
-                             record_earnings_event, submit_decision,
-                             close_paper_position
-    orchestrator/launcher.py Role defs (scout/analyst), tool allowlists,
-                             temp MCP config, claude -p invocation
-    orchestrator/main.py     CLI: scout | analyze SYMBOL | status | close
-    prompts/POLICY.md        Versioned trading policy (parse: "Version: X.Y.Z")
-    prompts/scout.md         Scout mission
-    prompts/analyst.md       Analyst mission
-    datasets/                SQLite + exports (gitignored)
+    engine/         config · risk (gate) · arming · store (6 tables +
+                    migrations) · indicators · ml · context (pack + DIRECTIVES)
+    gateway/mcp_server.py   all agent tools + server-side gate + screen
+    orchestrator/   launcher (roles/models/allowlists/timeout) · daily
+                    (phased ticks + guards) · schedule (launchd, hardened) ·
+                    briefing (deterministic) · main (CLI)
+    prompts/        POLICY.md (versioned) · PLAYBOOK.md (per-symbol evidence)
+                    · 8 role missions
+    reports/        BRIEFING.md (auto-committed daily) · research/ (dated
+                    studies + scripts)
+    DIRECTIVES.md   operator steering — injected into every context pack
 
 ## Common commands
 
-    # One-time setup
-    python3 -m venv .venv && source .venv/bin/activate && pip install -e ".[dev]"
+    python -m pytest -q                          # 63 tests — run before commits
+    python -m orchestrator.main status           # context pack
+    python -m orchestrator.main report [--write] # operator briefing
+    python -m orchestrator.daily --phase morning|afternoon|evening --dry-run
+    python -m orchestrator.main analyze SYM | scout | backtest [SYM] | monitor
+    python -m orchestrator.main ml-train | ml-backfill [SYM]
+    python -m orchestrator.main close SYM --price X          # manual paper close
+    python -m orchestrator.main arm-live ... --confirm | disarm
+    python -m orchestrator.main enable-shorting --confirm | disable-shorting
+    python -m orchestrator.schedule install | status | uninstall
 
-    # Tests (run before any commit touching engine/ or gateway/)
-    python -m pytest -q
+## Env overrides (Config.from_env)
 
-    # Show current context pack (no agent, no cost)
-    python -m orchestrator.main status
-
-    # Agent runs (headless claude -p; needs Robinhood MCP OAuth done in Claude Code)
-    python -m orchestrator.main scout                    # sync earnings calendar → store
-    python -m orchestrator.main analyze NVDA             # analyst run for one symbol
-    python -m orchestrator.main analyze NVDA --model claude-fable-5
-
-    # Manual paper close / labeling (the daily tick's labeler handles this too)
-    python -m orchestrator.main close NVDA --price 187.50 --notes "T+1 open"
-
-    # Daily automation (launchd; fires 09:31 / 15:40 / 16:50 local)
-    python -m orchestrator.daily --dry-run                    # auto phase
-    python -m orchestrator.daily --phase afternoon --dry-run  # specific phase
-    python -m orchestrator.main backtest [SYMBOL]             # backfill gap/drift stats
-    python -m orchestrator.schedule status       # loaded state + stderr tail
-    python -m orchestrator.schedule install --hour 10 --minute 0   # reschedule
-    python -m orchestrator.schedule uninstall
-
-    # Live trading (REAL MONEY) — operator-only release lever
-    python -m orchestrator.main arm-live --confirm            # $200/pos, $400/day, 7 days
-    python -m orchestrator.main arm-live --per-position 100 --daily 200 --days 3 --confirm
-    python -m orchestrator.main disarm                        # instant kill
-
-## Env overrides (read by Config.from_env)
-
-    EARNINGS_MODE            paper (default; gate rejects anything else in v1)
-    EARNINGS_DB              path to sqlite (default datasets/earnings.sqlite3)
-    EARNINGS_UNIVERSE        CSV of symbols (default: AI/data-center list in config.py)
+    EARNINGS_MODE / EARNINGS_DB / EARNINGS_UNIVERSE / EARNINGS_MACRO_WATCH
     EARNINGS_MAX_POSITION_USD / EARNINGS_MAX_DAILY_USD / EARNINGS_MAX_OPEN_POSITIONS
+    EARNINGS_MAX_ANALYST_RUNS (default 6/day)
 
-## Working with the operator
+## Working with the operator (Mike)
 
 - Terse, decisive answers; show tradeoffs, give a recommendation.
-- Confirm before anything that spends money, places real orders, or publishes.
-- Tests must pass before committing engine/gateway changes.
-- Record verified run findings (dated) in ARCHITECTURE §8 — never undated claims.
+- Confirm before anything that spends money beyond the armed flow, arms/
+  disarms, or publishes externally.
+- Tests must pass before committing engine/gateway/orchestrator changes.
+- Record verified run findings (dated) in ARCHITECTURE §8 — never undated
+  claims. Dated research goes in reports/research/ with reproducible scripts.
+- The operator steers via DIRECTIVES.md; read it, it's in every context pack.

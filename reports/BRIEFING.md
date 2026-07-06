@@ -1,5 +1,5 @@
 # Operator Briefing — 2026-07-05
-_Generated 2026-07-06T03:16:49+00:00 (deterministic; built from the store, not model output)._
+_Generated 2026-07-06T03:28:59+00:00 (deterministic; built from the store, not model output)._
 
 ## Account & risk
 - **LIVE — armed until 2026-08-04** (30d left); live caps $250.00/position, $450.00/day
@@ -56,7 +56,7 @@ _Generated 2026-07-06T03:16:49+00:00 (deterministic; built from the store, not m
 - ML sidecar: trained (BELOW BASE RATE — treat as noise): 84 rows, CV accuracy 44% vs base rate 52%, as of 2026-07-06T03:15:49+00:00
 
 ## Longer-term roadmap status
-- Dataset: 0 closed trades + 0 labeled passes | backtests: 90 historical events
+- Dataset: 0 closed trades + 0 labeled passes | backtests: 143 historical events
 - **ML sidecar (Phase 4)**: pipeline BUILT and self-activating — trains automatically each morning; advisory until ~50 labeled rows
 - Phase 2 (deterministic indicators): BUILT — compute_indicators / compute_implied_move run server-side
 - Strategy is STOCKS-ONLY (operator decision): live capital goes long equity; bearish theses are paper-only dataset legs (options L2 exists on the account but is deliberately unused)

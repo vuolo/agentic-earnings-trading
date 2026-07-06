@@ -46,3 +46,20 @@ Source: reports/research/2026-07-05-* studies.
 Cross-cutting (all 90 events): moderate up-gaps (+2–10%) fade day-0 (−2.2 to
 −2.6% avg); moderate down-gaps (5–10%) bounce slightly (+0.7%); giant gaps
 (>10%) are name-specific — use the lines above, not the average.
+
+## Screened candidates, week of 2026-07-06 (6 quarters daily, backfilled 7/5)
+
+- **DAL** (bmo 7/10): the week's best setup — gap up-rate 0.83, mean +5.8%,
+  worst −4.1%. Standard non-core sizing rules apply, but the stats earn the
+  top of that range.
+- **PEP** (bmo 7/9): tight, boring gaps (std 2.2%) — mild either way;
+  exploration size at most.
+- **LEVI** (amc 7/8): middling coin-flip gaps; nothing special either way.
+- **WDFC** (amc 7/9): post-open drift fades 5/6 (mean −3.7%) — if held, the
+  auction exit is non-negotiable here.
+- **SMPL** (bmo 7/9): DANGER — gap up-rate 0.33, worst −27%. The sizing
+  check fails above minimum size; strong pass candidate.
+- **PENG** (amc 7/7): AI/HPC-adjacent but wide-tailed (worst −17.8%,
+  up-rate ~0.5) — minimum size only despite the thematic fit.
+- **EPAC / PSMT / AZZ**: coin-flip direction, −10 to −12% tails, modest
+  liquidity — exploration size, and a named disqualifier is respectable.

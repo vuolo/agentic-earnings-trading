@@ -61,6 +61,12 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("ml-train", help="(re)train the ML sidecar from the dataset")
     sub.add_parser("monitor", help="run the account monitor/reconciliation agent")
 
+    p_es = sub.add_parser("enable-shorting",
+                          help="allow live short_equity (after a verified broker probe)")
+    p_es.add_argument("--confirm", action="store_true",
+                      help="required: confirms a review_equity_order short probe succeeded")
+    sub.add_parser("disable-shorting", help="block live short_equity again")
+
     args = parser.parse_args(argv)
 
     if args.cmd == "scout":
@@ -131,6 +137,21 @@ def main(argv: list[str] | None = None) -> int:
                 out.parent.mkdir(exist_ok=True)
                 out.write_text(text)
                 print(f"[written to {out}]")
+            return 0
+        if args.cmd == "enable-shorting":
+            if not args.confirm:
+                print("Refusing without --confirm. Enable only after a "
+                      "review_equity_order short-sell probe on the designated "
+                      "account came back clean (margin active, no blocking "
+                      "alerts). FINRA requires $2,000 minimum equity for short "
+                      "positions.", file=sys.stderr)
+                return 1
+            store.meta_set("short_capable", "1")
+            print("short_equity ENABLED for live routing (risk gate will now pass it).")
+            return 0
+        if args.cmd == "disable-shorting":
+            store.meta_set("short_capable", "")
+            print("short_equity disabled — gate rejects it again.")
             return 0
         if args.cmd == "close":
             result = store.close_position(args.symbol.upper(), args.price, args.notes)

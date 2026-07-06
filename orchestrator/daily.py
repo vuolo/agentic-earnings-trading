@@ -198,8 +198,10 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
 
             live_closes = store.due_live_closes(today.isoformat())
             if live_closes and arm:
-                job = "sell to close at the open (decision_id symbol): " + ", ".join(
-                    f"#{r['id']} {r['symbol']}" for r in live_closes)
+                job = ("close at the open — sell for long_equity, buy-to-cover "
+                       "for short_equity (decision_id symbol action): "
+                       + ", ".join(f"#{r['id']} {r['symbol']} {r['action']}"
+                                   for r in live_closes))
                 print(f"executor (ARMED until {arm.expires}): {job}")
                 if not dry_run:
                     print(f"executor exit {launcher.run_role('executor', symbol=job, model=model)}")
@@ -254,9 +256,12 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
 
             pending = store.pending_executions()
             if pending and arm:
-                job = ("buy before the close (decision_id symbol $size @ref): "
-                       + ", ".join(f"#{r['id']} {r['symbol']} ${r['size_usd']:,.0f} "
-                                   f"@{r['entry_price']}" for r in pending))
+                job = ("open positions before the close — buy for long_equity, "
+                       "sell-short for short_equity (decision_id symbol action "
+                       "$size @ref): "
+                       + ", ".join(f"#{r['id']} {r['symbol']} {r['action']} "
+                                   f"${r['size_usd']:,.0f} @{r['entry_price']}"
+                                   for r in pending))
                 print(f"executor (ARMED until {arm.expires}): {job}")
                 if not dry_run:
                     print(f"executor exit {launcher.run_role('executor', symbol=job, model=model)}")
@@ -270,15 +275,25 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
             if not candidates:
                 print("executor: no same-day AMC exits to consider")
                 return
-            # Cash-account GFV guard: if today's entry was funded by today's
-            # sale proceeds (a live close happened earlier today), selling it
-            # again today would be a good-faith violation. Ride to the open —
-            # the proceeds settle T+1 morning and the exit is clean.
-            if store.live_closes_today():
+            # Settlement guard, by account type:
+            # - cash: GFV — if a live close already happened today, today's
+            #   entry was proceeds-funded; re-selling it today is a violation.
+            # - margin: PDT — max 3 same-day round trips per 5 trading days
+            #   under $25k equity.
+            acct_type = store.meta_get("account_type", "cash")
+            if acct_type == "cash" and store.live_closes_today():
                 print(f"executor: {len(candidates)} AMC exit(s) available but a live "
                       "close already happened today — same-day re-sale of proceeds "
-                      "risks a good-faith violation; holding to the next open")
+                      "risks a good-faith violation (cash account); holding to the "
+                      "next open")
                 return
+            if acct_type == "margin":
+                used = store.day_trades_last_5d()
+                if used + len(candidates) > 3:
+                    print(f"executor: {len(candidates)} AMC exit(s) available but "
+                          f"PDT budget is {used}/3 (margin account under $25k) — "
+                          "holding to the next open")
+                    return
             if not arm:
                 print(f"executor: same-day exits due but {arm_why} — positions "
                       "ride to the next open")

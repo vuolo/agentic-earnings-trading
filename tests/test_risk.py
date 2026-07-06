@@ -63,8 +63,19 @@ def test_rejects_outside_universe(setup):
 
 def test_rejects_invalid_action(setup):
     _, _, gate = setup
-    assert not gate.evaluate(req(action="short_equity")).approved
+    assert not gate.evaluate(req(action="sell_naked_calls")).approved
     assert not gate.evaluate(req(action="pass")).approved
+
+
+def test_short_requires_operator_enable(setup):
+    _, store, gate = setup
+    verdict = gate.evaluate(req(action="short_equity"))
+    assert not verdict.approved
+    assert any("operator-verified shorting" in r for r in verdict.reasons)
+    store.meta_set("short_capable", "1")
+    assert gate.evaluate(req(action="short_equity")).approved
+    store.meta_set("short_capable", "")
+    assert not gate.evaluate(req(action="short_equity")).approved
 
 
 def test_rejects_duplicate_open_position(setup):

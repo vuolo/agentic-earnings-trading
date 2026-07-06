@@ -59,8 +59,13 @@ def build_briefing(cfg: Config, store: Store) -> str:
         md.append("- Account: no snapshot yet (first executor run reports it)")
     acct = store.meta_get("account_number", "")
     if acct:
-        md.append(f"- Designated account: ••••{acct[-4:]} ('Agentic', cash — no PDT; "
-                  "T+1 settlement with GFV guard on same-day exits)")
+        acct_type = store.meta_get("account_type", "cash")
+        shorting = ("shorting ENABLED" if store.meta_get("short_capable", "") == "1"
+                    else "shorting not enabled")
+        rule = ("PDT-guarded" if acct_type == "margin"
+                else "T+1/GFV-guarded, no PDT")
+        md.append(f"- Designated account: ••••{acct[-4:]} ('Agentic', {acct_type} — "
+                  f"{rule}; {shorting})")
     md.append(f"- Live closes today: {store.live_closes_today()} | "
               f"same-day round trips this week: {store.day_trades_last_5d()}")
     md.append(f"- Today's new exposure: {_fmt_money(store.today_new_exposure())}")

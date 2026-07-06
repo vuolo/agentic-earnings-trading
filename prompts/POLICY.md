@@ -1,6 +1,6 @@
 # Trading Policy
 
-Version: 0.3.1
+Version: 0.4.0
 Mode: live when the operator's arm switch is active; paper otherwise
 
 Every decision you submit is stamped with this version. v0.3.0 (operator-
@@ -74,13 +74,15 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
 - **BMO (overnight) entries need more**: conviction ≥ **0.70** AND the worst
   historical gap in the name must not exceed ~2× your intended size's
   tolerable loss. State this check in the thesis.
-- Direction: bullish → `long_equity`. Bearish → `bearish_option` — a
-  **paper-only dataset leg**: this is a STOCKS-ONLY strategy by operator
-  decision (2026-07-05). Equity shorting is impossible on this setup
-  (verified: cash account; the API rejects shorts), and options — although
-  the Agentic account now has option level 2 — are deliberately not traded.
-  Bearish paper legs exist so the dataset learns direction-calling; live
-  capital only ever goes long equity.
+- Direction (stocks-only strategy; options deliberately unused):
+  - Bullish → `long_equity`.
+  - Bearish → `short_equity` **when the context pack shows shorting ENABLED**
+    (margin account, operator-verified via broker probe, whole shares only);
+    otherwise → `bearish_option`, the paper-only dataset leg. Check the
+    context pack's settlement line before choosing.
+  - **Short entries carry the BMO-grade evidence bar always** (conviction
+    ≥ 0.70), and use the backtest's BEST gap (upside tail) as the risk check
+    — a short's worst case is the stock gapping UP.
 - No specific, defensible edge → submit `pass` with the full snapshot and a
   reference `entry_price`. Passes are dataset rows — never skip submitting.
 

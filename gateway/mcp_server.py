@@ -128,11 +128,12 @@ def submit_decision(
     verdict = GATE.evaluate(
         DecisionRequest(symbol=symbol, action=action, size_usd=size_usd, conviction=conviction)
     )
-    # Live routing: only armed long_equity goes to the executor. Bearish stays
-    # a paper leg until live options execution exists (ARCHITECTURE §4).
+    # Live routing: armed long_equity — and short_equity once the operator has
+    # verified+enabled shorting (the gate rejects it otherwise) — go to the
+    # executor. bearish_option stays a paper dataset leg.
     if not verdict.approved:
         status = "rejected"
-    elif CFG.mode == "live" and action == "long_equity":
+    elif CFG.mode == "live" and action in ("long_equity", "short_equity"):
         status = "pending_live"
     else:
         status = "open_paper"
@@ -293,11 +294,14 @@ def get_ml_prediction(features_json: str, conviction: float = -1.0) -> str:
 
 @mcp.tool()
 def report_account_snapshot(
-    equity_usd: float, cash_usd: float, buying_power_usd: float
+    equity_usd: float, cash_usd: float, buying_power_usd: float,
+    account_type: str = "",
 ) -> str:
     """Report the REAL account state (from get_accounts/get_portfolio) so every
-    agent sees it in the context pack. The executor calls this at the start of
-    every run — balance awareness is mandatory before any order."""
+    agent sees it in the context pack. The executor/monitor call this at the
+    start of every run — balance awareness is mandatory before any order.
+    account_type: 'cash' or 'margin' as reported by get_accounts for the
+    designated account (drives the settlement/PDT logic)."""
     from datetime import datetime, timezone
     STORE.meta_set("account_snapshot", json.dumps({
         "equity_usd": equity_usd,
@@ -305,6 +309,8 @@ def report_account_snapshot(
         "buying_power_usd": buying_power_usd,
         "reported_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }))
+    if account_type.strip().lower() in ("cash", "margin"):
+        STORE.meta_set("account_type", account_type.strip().lower())
     return f"Account snapshot recorded.\n\n{_pack()}"
 
 

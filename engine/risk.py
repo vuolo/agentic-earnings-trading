@@ -13,8 +13,8 @@ from dataclasses import dataclass
 from .config import Config
 from .store import Store
 
-VALID_ACTIONS = ("long_equity", "bearish_option", "pass")
-TRADE_ACTIONS = ("long_equity", "bearish_option")
+VALID_ACTIONS = ("long_equity", "short_equity", "bearish_option", "pass")
+TRADE_ACTIONS = ("long_equity", "short_equity", "bearish_option")
 
 
 @dataclass(frozen=True)
@@ -62,6 +62,12 @@ class RiskGate:
             reasons.append(f"unknown mode '{self.cfg.mode}'")
         if req.action not in TRADE_ACTIONS:
             reasons.append(f"action '{req.action}' is not a tradeable action")
+        if req.action == "short_equity" and self.store.meta_get("short_capable", "") != "1":
+            reasons.append(
+                "short_equity requires operator-verified shorting "
+                "(`enable-shorting` after a successful broker probe) — "
+                "margin/broker support is unconfirmed"
+            )
         if self.cfg.universe and symbol not in self.cfg.universe:
             reasons.append(f"{symbol} is outside the configured universe")
         if req.size_usd <= 0:

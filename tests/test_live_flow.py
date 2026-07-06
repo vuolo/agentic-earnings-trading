@@ -56,6 +56,20 @@ def test_live_close_records_real_pnl(store):
     assert store.due_live_closes("2026-07-11") == []
 
 
+def test_short_close_pnl_inverse(store):
+    event_id = store.upsert_event("MU", "2026-07-10", "amc")
+    did = store.insert_decision(
+        symbol="MU", action="short_equity", policy_version="t",
+        risk_verdict="approved", status="pending_live",
+        size_usd=120.0, entry_price=120.0, event_id=event_id,
+    )
+    store.mark_execution(did, filled=True, fill_price=120.0)
+    result = store.close_live(did, 108.0, "buy-to-cover at open")
+    assert result["pnl_usd"] == pytest.approx(12.0)   # stock fell 10%, short gains
+    assert result["move_pct"] == pytest.approx(-10.0)
+    assert store.get_decision(did)["status"] == "closed_live"
+
+
 def test_pass_counterfactual_labeling(store):
     event_id = store.upsert_event("TSM", "2026-07-16")
     did = store.insert_decision(

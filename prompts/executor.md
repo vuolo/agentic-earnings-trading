@@ -18,9 +18,11 @@ available buying power (never up).
   NOT place — report failed with the alert text.
 - **Fractional/dollar orders**: `type=market` + `market_hours=regular_hours`
   ONLY. The API rejects them in extended hours and on limit orders.
-- **No shorting**: this is a cash account; a sell without held shares will be
-  rejected. Bearish theses are handled elsewhere (paper legs) — never
-  attempt one here.
+- **Shorting**: allowed ONLY for kickoff jobs explicitly marked
+  `short_equity`, and only while the context pack shows shorting ENABLED.
+  Shorts are WHOLE SHARES via limit orders (no fractional shorts, ever). If
+  the context pack says shorting is not enabled or the account is cash,
+  report any short job failed ("shorting not enabled") — do not attempt it.
 
 ## Step 0 — balance awareness (mandatory, every run)
 
@@ -28,9 +30,10 @@ available buying power (never up).
 `report_account_snapshot(equity_usd, cash_usd, buying_power_usd)`. Every order
 must respect the buying power you just reported.
 
-## Buy jobs (pending_live decisions) — afternoon, regular hours
+## Entry jobs (pending_live decisions) — afternoon, regular hours
 
-For each `#id SYMBOL $size @ref` in the kickoff:
+For each `#id SYMBOL ACTION $size @ref` in the kickoff — `long_equity` = BUY,
+`short_equity` = SELL-short (whole shares only, shorting-enabled required):
 
 1. Cross-check against `get_pending_executions`; skip + report anything not
    listed there.
@@ -41,23 +44,31 @@ For each `#id SYMBOL $size @ref` in the kickoff:
    Under $20 → report failed ("insufficient buying power").
 4. **Choose order form** (this decides whether a same-day after-hours exit is
    even possible later):
-   - If ask ≤ order dollars: buy `floor(dollars / ask)` WHOLE shares as a
+   - LONG, ask ≤ order dollars: buy `floor(dollars / ask)` WHOLE shares as a
      marketable LIMIT at ask + ~0.2% (whole-share positions can be sold in
      extended hours).
-   - Else: `dollar_amount` MARKET order for the order dollars (fractional —
+   - LONG, ask > order dollars: `dollar_amount` MARKET order (fractional —
      fine, but it can only be exited in regular hours).
+   - SHORT: whole shares only — `floor(dollars / bid)` shares, SELL limit at
+     bid − ~0.2%. If the price exceeds the order dollars (can't short even
+     one share), report failed ("price exceeds size — cannot short
+     fractionally").
 5. Confirm via `get_equity_orders`. Filled → `report_execution(id,
    filled=true, fill_price=<average fill>)` (note whole vs fractional in
    detail). Unfilled limit near the close → `cancel_equity_order`, then
    report failed ("unfilled, cancelled"). Never leave an entry resting
    overnight.
 
-## Sell-to-close jobs (open_live positions)
+## Close jobs (open_live positions)
 
-1. `get_equity_positions` for the actual quantity held for that symbol — sell
-   exactly that (it came from this decision's buy).
-2. **Morning exits (regular hours)**: MARKET sell the full quantity
-   (fractional allowed in regular hours), after review.
+Direction by the job's action: `long_equity` → SELL to close;
+`short_equity` → BUY-to-cover.
+
+1. `get_equity_positions` for the actual quantity held (or short) for that
+   symbol — close exactly that (it came from this decision's entry).
+2. **Morning exits (regular hours)**: MARKET order for the full quantity
+   (fractional allowed in regular hours for longs; shorts are whole-share by
+   construction), after review.
 3. **After-hours exits (kickoff says extended-hours)**: extended hours allows
    whole-share LIMIT only. If the held quantity has ANY fractional part, skip
    the job and report it rides to the next open — do not partially exit.

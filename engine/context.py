@@ -19,6 +19,21 @@ DIRECTIVES_PATH = REPO_ROOT / "DIRECTIVES.md"
 _DIRECTIVES_MAX_CHARS = 1200
 
 
+def _settlement_line(store: Store) -> str:
+    acct_type = store.meta_get("account_type", "cash")
+    shorting = ("ENABLED (operator-verified)"
+                if store.meta_get("short_capable", "") == "1"
+                else "not enabled — short_equity is gate-rejected")
+    if acct_type == "margin":
+        return (f"settlement: designated account is MARGIN — PDT applies under "
+                f"$25k ({store.day_trades_last_5d()}/3 same-day round trips this "
+                f"week); proceeds reusable immediately; shorting: {shorting}")
+    return ("settlement: designated account is CASH (no PDT) — T+1 settlement; "
+            f"live closes today: {store.live_closes_today()} (same-day re-sale "
+            "of sale-proceeds-funded entries = good-faith violation; the "
+            f"evening tick guards this); shorting: impossible on cash")
+
+
 def build_context_pack(cfg: Config, store: Store) -> str:
     limits = cfg.limits
     open_pos = store.open_positions()
@@ -41,18 +56,16 @@ def build_context_pack(cfg: Config, store: Store) -> str:
         f"risk: per-position cap ${limits.max_position_usd:,.0f} | "
         f"daily new-exposure ${used:,.2f} used of ${limits.max_daily_new_exposure_usd:,.0f} | "
         f"open positions {len(open_pos)}/{limits.max_open_positions}",
-        "settlement: designated account is CASH (no PDT) — T+1 settlement; "
-        f"live closes today: {store.live_closes_today()} (same-day re-sale of "
-        "sale-proceeds-funded entries = good-faith violation; the evening tick "
-        "guards this)",
+        _settlement_line(store),
         f"universe: {', '.join(cfg.universe) if cfg.universe else '(unrestricted)'}",
     ]
 
     acct = store.meta_get("account_number", "")
     if acct:
         lines.append(
-            f"designated_account: {acct} (nickname 'Agentic', cash, "
-            "agentic_allowed — the ONLY account order tools may use)"
+            f"designated_account: {acct} (nickname 'Agentic', "
+            f"{store.meta_get('account_type', 'cash')}, agentic_allowed — "
+            "the ONLY account order tools may use)"
         )
 
     snap = store.meta_get("account_snapshot", "")

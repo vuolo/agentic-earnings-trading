@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS decisions (
     event_id       INTEGER REFERENCES events(id),
     symbol         TEXT NOT NULL,
     policy_version TEXT NOT NULL,
-    action         TEXT NOT NULL CHECK (action IN ('long_equity', 'bearish_option', 'pass')),
+    action         TEXT NOT NULL CHECK (action IN ('long_equity', 'short_equity', 'bearish_option', 'pass')),
     size_usd       REAL NOT NULL DEFAULT 0,
     entry_price    REAL,
     conviction     REAL,
@@ -116,22 +116,28 @@ class Store:
         self._db.commit()
 
     def _migrate_v1_decisions(self) -> None:
-        """v1 decisions had a status CHECK limited to the paper lifecycle;
-        rebuild the table (v2 validates status in code) preserving rows."""
+        """Rebuild the decisions table when an older schema is detected
+        (v1: paper-only status CHECK; v2: no short_equity in the action
+        CHECK), preserving rows."""
         row = self._db.execute(
             "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'decisions'"
         ).fetchone()
-        if row is None or "status IN" not in row["sql"]:
+        if row is None:
             return
+        sql = row["sql"]
+        if "short_equity" in sql and "status IN" not in sql:
+            return  # current schema
         cols = ("id, event_id, symbol, policy_version, action, size_usd, "
                 "entry_price, conviction, thesis, features, risk_verdict, "
                 "status, created_at")
-        self._db.execute("ALTER TABLE decisions RENAME TO decisions_v1")
+        if "exec_detail" in sql:
+            cols = cols.replace("status, created_at", "status, exec_detail, created_at")
+        self._db.execute("ALTER TABLE decisions RENAME TO decisions_old")
         self._db.executescript(_DECISIONS_SQL)
         self._db.execute(
-            f"INSERT INTO decisions ({cols}) SELECT {cols} FROM decisions_v1"
+            f"INSERT INTO decisions ({cols}) SELECT {cols} FROM decisions_old"
         )
-        self._db.execute("DROP TABLE decisions_v1")
+        self._db.execute("DROP TABLE decisions_old")
         self._db.commit()
 
     def close(self) -> None:

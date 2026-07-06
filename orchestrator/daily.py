@@ -20,7 +20,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 
 from engine.arming import arm_status
 from engine.config import Config
@@ -86,6 +87,56 @@ def _skip_reanalysis(store: Store, event, policy_version: str) -> bool:
     )
 
 
+def _prewarm() -> None:
+    """Materialize iCloud-evicted venv/dataset files BEFORE anything is on a
+    clock. MaterializeDatalessFiles fixed the hard errno-11 crash but made
+    re-download lazy — on freshly-woken Wi-Fi it can exceed the FIXED 60s
+    MCP initialize timeout, producing tool-less agents that exit 0 (sibling
+    stake-synthetics finding, 2026-07-06). A multi-second prewarm duration
+    is the telltale that eviction happened overnight."""
+    import subprocess as sp
+    import sys
+    import time
+    t0 = time.monotonic()
+    venv_py = str((Path(__file__).resolve().parents[1]) / ".venv" / "bin" / "python")
+    try:
+        sp.run([venv_py, "-c",
+                "import numpy, sklearn.linear_model, pydantic, "
+                "mcp.server.fastmcp, engine.store, engine.indicators"],
+               capture_output=True, timeout=600)
+        db = Path(__file__).resolve().parents[1] / "datasets" / "earnings.sqlite3"
+        if db.exists():
+            db.read_bytes()
+    except Exception as e:
+        print(f"prewarm: WARNING — {type(e).__name__}: {e}")
+    dur = time.monotonic() - t0
+    print(f"prewarm: {dur:.1f}s" + ("  (⚠ slow — iCloud eviction likely re-materialized)"
+                                    if dur > 10 else ""))
+
+
+
+def _run_with_evidence(store: Store, role: str, *, symbol: str | None = None,
+                       model: str | None = None) -> int:
+    """run_role + tool-less-run detection: every real agent run boots our
+    gateway, which stamps meta gateway_last_boot. No stamp after the run
+    started ⇒ the MCP handshake failed (agent had no tools; exit 0 is
+    meaningless) ⇒ retry once — everything is warm the second time."""
+    start = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    rc = launcher.run_role(role, symbol=symbol, model=model)
+    if store.meta_get("gateway_last_boot", "") >= start:
+        return rc
+    print(f"{role}: NO GATEWAY BOOT EVIDENCE (tool-less run, exit {rc}) — "
+          "retrying once warm")
+    start = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    rc = launcher.run_role(role, symbol=symbol, model=model)
+    if store.meta_get("gateway_last_boot", "") < start:
+        print(f"{role}: retry ALSO produced no gateway boot — giving up "
+              "(check MCP/venv health)")
+        store.meta_set("last_tick_error",
+                       f"{role}: tool-less agent runs (gateway never booted)")
+    return rc
+
+
 def _write_briefing(cfg: Config, store: Store) -> None:
     """Regenerate the operator briefing and commit it (best-effort)."""
     import subprocess
@@ -114,6 +165,7 @@ def tick(*, phase: str = "auto", run_scout: bool = True, dry_run: bool = False,
     print(f"=== {phase} tick {today.isoformat()} (model={model or launcher.DEFAULT_MODEL}"
           + (", DRY RUN" if dry_run else "") + ") ===")
 
+    _prewarm()
     cfg = Config.from_env()
     store = Store(cfg.db_path)
     arm, arm_why = arm_status()
@@ -169,7 +221,7 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                                    for r in live_closes))
                 print(f"executor (ARMED until {arm.expires}): {job}")
                 if not dry_run:
-                    print(f"executor exit {launcher.run_role('executor', symbol=job, model=model)}")
+                    print(f"executor exit {_run_with_evidence(store, 'executor', symbol=job, model=model)}")
             elif live_closes:
                 print(f"executor: {len(live_closes)} live close(s) due but {arm_why} "
                       "— MANUAL ACTION NEEDED (positions are real)")
@@ -179,13 +231,13 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
             if dry_run:
                 print("monitor: would report account snapshot + reconcile")
             else:
-                print(f"monitor exit {launcher.run_role('monitor')}")
+                print(f"monitor exit {_run_with_evidence(store, 'monitor')}")
 
             if run_scout:
                 if dry_run:
                     print("scout: would run")
                 else:
-                    print(f"scout exit {launcher.run_role('scout', model=model)}")
+                    print(f"scout exit {_run_with_evidence(store, 'scout', model=model)}")
 
             # Monday: refresh backtests for events that just happened, so the
             # realized rows (incl. post_close) stay complete.
@@ -200,7 +252,7 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                     print(f"backtester: refreshing realized events for {syms}")
                     if not dry_run:
                         print(f"backtester exit "
-                              f"{launcher.run_role('backtester', symbol=syms, model=model)}")
+                              f"{_run_with_evidence(store, 'backtester', symbol=syms, model=model)}")
 
             due = store.due_closes(today.isoformat())
             passes = store.due_pass_labels(today.isoformat())
@@ -215,7 +267,7 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                 job = "; ".join(jobs)
                 print(f"labeler: {job}")
                 if not dry_run:
-                    print(f"labeler exit {launcher.run_role('labeler', symbol=job, model=model)}")
+                    print(f"labeler exit {_run_with_evidence(store, 'labeler', symbol=job, model=model)}")
             else:
                 print("labeler: nothing due")
 
@@ -224,7 +276,7 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
             if n - last >= STRATEGIST_MIN_NEW_OUTCOMES:
                 print(f"strategist: {n - last} new labeled outcomes — running policy review")
                 if not dry_run:
-                    print(f"strategist exit {launcher.run_role('strategist', model=model)}")
+                    print(f"strategist exit {_run_with_evidence(store, 'strategist', model=model)}")
                     store.meta_set("strategist_outcome_count", str(n))
             else:
                 print(f"strategist: {n - last} new outcomes since last review "
@@ -283,7 +335,7 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                 syms = ", ".join(sorted(set(need_bt)))
                 print(f"backtester: backfilling new names first — {syms}")
                 if not dry_run:
-                    print(f"backtester exit {launcher.run_role('backtester', symbol=syms, model=model)}")
+                    print(f"backtester exit {_run_with_evidence(store, 'backtester', symbol=syms, model=model)}")
 
             ran = 0
             for _, _, e in due:
@@ -293,7 +345,7 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                 ran += 1
                 print(f"analyst: {e['symbol']} {e['report_date']} ({e['timing']}) is due")
                 if not dry_run:
-                    rc = launcher.run_role("analyst", symbol=e["symbol"], model=model)
+                    rc = _run_with_evidence(store, "analyst", symbol=e["symbol"], model=model)
                     print(f"analyst({e['symbol']}) exit {rc}")
             if ran == 0:
                 print("analyst: no events in the decision window")
@@ -323,7 +375,7 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                                    for r in pending))
                 print(f"executor (ARMED until {arm.expires}): {job}")
                 if not dry_run:
-                    print(f"executor exit {launcher.run_role('executor', symbol=job, model=model)}")
+                    print(f"executor exit {_run_with_evidence(store, 'executor', symbol=job, model=model)}")
             elif pending:
                 print(f"executor: {len(pending)} pending buy(s) but {arm_why} — nothing executes")
             else:
@@ -361,7 +413,7 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                                for r in due))
             print(f"executor (ARMED until {arm.expires}): {job}")
             if not dry_run:
-                print(f"executor exit {launcher.run_role('executor', symbol=job, model=model)}")
+                print(f"executor exit {_run_with_evidence(store, 'executor', symbol=job, model=model)}")
         else:
             raise ValueError(f"unknown phase {phase!r}")
 

@@ -39,6 +39,14 @@ CFG = Config.from_env()
 STORE = Store(CFG.db_path)
 GATE = RiskGate(CFG, STORE)
 
+# Boot evidence: the tick checks this to detect tool-less agent runs (the MCP
+# initialize timeout is FIXED at 60s; iCloud lazy re-materialization of the
+# venv on a freshly-woken Mac can blow it — sibling finding, 2026-07-06). If
+# this stamp never lands after a run started, the agent ran without our tools
+# and its exit 0 means nothing.
+from datetime import datetime as _dt, timezone as _tz
+STORE.meta_set("gateway_last_boot", _dt.now(_tz.utc).isoformat(timespec="seconds"))
+
 
 def _pack() -> str:
     return build_context_pack(CFG, STORE)

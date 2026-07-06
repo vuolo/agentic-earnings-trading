@@ -90,7 +90,7 @@ def install(hour: int, minute: int, model: str) -> int:
         print(f"installed {LABEL}: fires daily at {times} local "
               f"(model={model})\nplist: {PLIST_PATH}\nlogs:  {LOGS}/launchd_*.log")
         print("note: the Mac must be awake and you logged in at fire times; "
-              "`sudo pmset repeat wakeorpoweron MTWRFSU 09:25:00` wakes it "
+              "`sudo pmset repeat wakeorpoweron MTWRFSU 09:19:00` wakes it "
               "for the morning tick.")
     else:
         print(f"launchctl bootstrap failed (rc={rc})", file=sys.stderr)

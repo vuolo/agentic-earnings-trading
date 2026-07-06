@@ -70,6 +70,18 @@ def build_dataset(store: Store) -> tuple[list[dict[str, float]], list[int]]:
             continue
         X.append(vec)
         y.append(1 if move > 0 else 0)
+    # Reconstructed historical rows (indicators as-of T-1 + realized gap
+    # label). Same target definition as live rows: pre-close -> post-open.
+    for row in store.training_rows():
+        try:
+            feats = json.loads(row["features"])
+        except (json.JSONDecodeError, TypeError):
+            continue
+        vec = extract_features(feats)
+        if len(vec) < 3:
+            continue
+        X.append(vec)
+        y.append(1 if row["label_move_pct"] > 0 else 0)
     return X, y
 
 

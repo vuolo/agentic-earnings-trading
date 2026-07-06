@@ -9,17 +9,22 @@ shows what is already recorded.
 
 ## Steps
 
-1. Call `get_context_pack`. Note the universe list and which upcoming events
-   are already recorded.
-2. Call `get_earnings_calendar` (Robinhood) and find every universe symbol
-   reporting in the next ~14 days. If the calendar tool supports querying by
-   symbol or date range, prefer targeted queries for the universe symbols.
-3. For each upcoming universe event, call `record_earnings_event` with:
-   - `symbol`, `report_date` (YYYY-MM-DD)
-   - `timing`: 'bmo' if the report is before market open, 'amc' if after
-     close, 'unknown' if the source doesn't say
-   - `details_json`: the raw calendar entry you saw, as JSON
-   Re-record events that already exist if your data is fresher (it upserts).
+1. Call `get_context_pack`. Note the core universe, macro_watch, and which
+   upcoming events are already recorded.
+2. Call `get_earnings_calendar` (Robinhood) for the next ~14 days —
+   **market-wide, not just the core universe**. Every reporter is a
+   candidate.
+3. Record events in three tiers:
+   - **Core universe + macro_watch symbols**: always record (symbol,
+     report_date, timing, details_json).
+   - **Everything else**: record WITH screen data — fetch the quote
+     (price), fundamentals (average volume), and `get_equity_tradability`,
+     then call `record_earnings_event` including `price`, `avg_volume`,
+     `tradeable`, `fractional`, `extended_hours`. The server decides
+     screened-in/out; only screened-in names become tradeable. Skip obvious
+     junk without wasting calls (OTC tickers, SPAC shells, price clearly
+     under $5).
+   - Re-record existing events when your data is fresher (it upserts).
 4. Finish with a short report: which events you recorded (symbol, date,
    timing), which universe symbols have NO event in the window, and anything
    ambiguous (conflicting dates, unconfirmed reports — mark those
@@ -32,8 +37,8 @@ shows what is already recorded.
 
 ## Rules
 
-- Tradeable events: universe symbols only. Macro-watch events: record them,
-  clearly non-tradeable.
+- Market-wide candidates need real screen data — a non-core event recorded
+  without price/volume stays untradeable by design.
 - Record only dates the data actually supports — never guess a report date.
 - If the calendar tool errors or returns nothing, report that plainly and stop;
   do not fabricate events.

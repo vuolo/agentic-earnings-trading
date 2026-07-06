@@ -54,11 +54,18 @@ def test_rejects_nonpositive_size(setup):
     assert not gate.evaluate(req(size=0)).approved
 
 
-def test_rejects_outside_universe(setup):
-    _, _, gate = setup
+def test_rejects_noncore_without_screened_event(setup):
+    _, store, gate = setup
     verdict = gate.evaluate(req(symbol="GME"))
     assert not verdict.approved
-    assert any("universe" in r for r in verdict.reasons)
+    assert any("no recorded upcoming event" in r for r in verdict.reasons)
+    from datetime import date, timedelta
+    eid = store.upsert_event("GME", (date.today() + timedelta(days=2)).isoformat())
+    verdict = gate.evaluate(req(symbol="GME"))
+    assert not verdict.approved
+    assert any("liquidity screen" in r for r in verdict.reasons)
+    store.set_event_screen(eid, True, '{"price": 25.0, "avg_volume": 5000000}')
+    assert gate.evaluate(req(symbol="GME")).approved
 
 
 def test_rejects_invalid_action(setup):

@@ -1,6 +1,6 @@
 # Trading Policy
 
-Version: 0.5.0
+Version: 0.6.0
 Mode: live when the operator's arm switch is active; paper otherwise
 
 Every decision you submit is stamped with this version. v0.3.0 (operator-
@@ -34,11 +34,22 @@ operator or the evidence-backed strategist review raises them.
 - Never enter outside these windows; never hold past the post-report exit
   without an operator instruction.
 
-## Universe
+## Universe (market-wide since v0.6.0)
 
-AI / data-center infrastructure names only (mirrors `engine/config.py`):
-NVDA, AMD, AVGO, TSM, MU, SMCI, DELL, HPE, VRT, ANET, MRVL, COHR, CRDO, ALAB, ORCL.
-The risk gate rejects symbols outside this list — do not analyze others.
+- **Core names** (deep evidence: 6 quarters of backtests + playbook lines):
+  NVDA, AMD, AVGO, TSM, MU, SMCI, DELL, HPE, VRT, ANET, MRVL, COHR, CRDO,
+  ALAB, ORCL. Always tradeable; sizing per the Sizing section.
+- **Everything else on the earnings calendar**: tradeable ONLY when the
+  scout's liquidity screen passed (price ≥ $5, avg volume ≥ 500k, tradeable
+  on our account — gate-enforced). For screened non-core names: **reduced
+  sizing (base $100, max $150)**, conviction bar +0.05, and the backtester
+  must have backfilled the name's gap history before you decide — no
+  backtest rows, no trade (submit pass and say why).
+- **Session awareness**: stocks differ — some trade 24h, some extended, some
+  regular-only (get_equity_tradability tells you). Entries and auction exits
+  are regular-hours and work for everything; the disaster valve and any AH
+  action require extended-hours support and whole shares. Note the symbol's
+  session profile in your snapshot under "event".
 
 ## Required feature snapshot (before any decision, including pass)
 

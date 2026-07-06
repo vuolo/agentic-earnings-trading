@@ -53,13 +53,22 @@ def get_context_pack() -> str:
 
 @mcp.tool()
 def record_earnings_event(
-    symbol: str, report_date: str, timing: str = "unknown", details_json: str = ""
+    symbol: str, report_date: str, timing: str = "unknown", details_json: str = "",
+    price: float = 0.0, avg_volume: float = 0.0, tradeable: bool = True,
+    fractional: bool = False, extended_hours: bool = False,
 ) -> str:
     """Record or refresh an upcoming earnings event.
 
-    report_date: YYYY-MM-DD. timing: 'bmo' (before open), 'amc' (after close),
-    or 'unknown'. details_json: the raw calendar payload you saw (JSON string).
+    report_date: YYYY-MM-DD. timing: 'bmo' | 'amc' | 'unknown'. details_json:
+    the raw calendar payload (JSON string).
+
+    Screening (market-wide expansion): pass price, avg_volume, and tradability
+    flags (from quotes/fundamentals/get_equity_tradability) — the server
+    computes whether the event passes the liquidity screen. Non-core names
+    are ONLY tradeable if their event is screened-in, so record these fields
+    for every candidate you want the analyst to be able to trade.
     """
+    from engine.config import SCREEN_MIN_AVG_VOLUME, SCREEN_MIN_PRICE
     symbol = symbol.strip().upper()
     try:
         date.fromisoformat(report_date)
@@ -70,7 +79,64 @@ def record_earnings_event(
     event_id = STORE.upsert_event(
         symbol, report_date, timing, raw=details_json or None
     )
-    return f"Recorded event #{event_id}: {symbol} {report_date}{coerced}.\n\n{_pack()}"
+    note = ""
+    if price > 0 or avg_volume > 0:
+        passed = (tradeable and price >= SCREEN_MIN_PRICE
+                  and avg_volume >= SCREEN_MIN_AVG_VOLUME)
+        STORE.set_event_screen(event_id, passed, json.dumps({
+            "price": price, "avg_volume": avg_volume, "tradeable": tradeable,
+            "fractional": fractional, "extended_hours": extended_hours,
+        }))
+        note = (" — SCREENED IN (tradeable for the analyst)" if passed else
+                f" — screened OUT (needs price>=${SCREEN_MIN_PRICE:.0f} and "
+                f"avg_volume>={SCREEN_MIN_AVG_VOLUME:,})")
+    return f"Recorded event #{event_id}: {symbol} {report_date}{coerced}{note}.\n\n{_pack()}"
+
+
+@mcp.tool()
+def record_training_row(
+    symbol: str, report_date: str, features_json: str, label_move_pct: float
+) -> str:
+    """Record a RECONSTRUCTED ML training row for a historical earnings event:
+    features as they would have looked at T-1 (indicators from bars ending
+    the day before the reaction; embed compute_indicators output verbatim
+    under "computed") and the realized label (pre-close -> post-open gap %).
+    Never fabricate: only record rows whose bars and gap you actually fetched."""
+    try:
+        json.loads(features_json)
+    except json.JSONDecodeError:
+        return "ERROR: features_json is not valid JSON"
+    try:
+        date.fromisoformat(report_date)
+    except ValueError:
+        return f"ERROR: report_date {report_date!r} is not YYYY-MM-DD."
+    rid = STORE.upsert_training_row(symbol, report_date, features_json, label_move_pct)
+    return f"Training row #{rid} recorded: {symbol} {report_date} label {label_move_pct:+.2f}%."
+
+
+@mcp.tool()
+def propose_playbook_update(new_playbook_markdown: str, rationale: str) -> str:
+    """Replace prompts/PLAYBOOK.md with a revised per-symbol playbook (the
+    strategist's second self-improvement path, alongside the policy). The
+    change is git-committed with your rationale. Keep it evidence-cited and
+    concise; every claim should trace to labeled outcomes or backtest rows."""
+    if len(rationale.strip()) < 40:
+        return f"ERROR: rationale too thin — cite the outcomes/backtests.\n\n{_pack()}"
+    if "# Per-Symbol Playbook" not in new_playbook_markdown:
+        return f"ERROR: keep the '# Per-Symbol Playbook' heading.\n\n{_pack()}"
+    if len(new_playbook_markdown) < 500:
+        return f"ERROR: playbook suspiciously short.\n\n{_pack()}"
+    path = REPO_ROOT / "prompts" / "PLAYBOOK.md"
+    path.write_text(new_playbook_markdown)
+    msg = (f"playbook: strategist update\n\n{rationale}\n\n"
+           "Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>")
+    r = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "commit", "-m", msg, "--", "prompts/PLAYBOOK.md"],
+        capture_output=True, text=True,
+    )
+    if r.returncode != 0:
+        return (f"Playbook updated but git commit failed:\n{r.stderr.strip()}\n\n{_pack()}")
+    return f"Playbook updated and committed.\n\n{_pack()}"
 
 
 @mcp.tool()

@@ -69,7 +69,20 @@ class RiskGate:
                 "margin/broker support is unconfirmed"
             )
         if self.cfg.universe and symbol not in self.cfg.universe:
-            reasons.append(f"{symbol} is outside the configured universe")
+            # Market-wide expansion: non-core names are tradeable ONLY when
+            # their upcoming event passed the scout's liquidity screen.
+            event = self.store.upcoming_event_for(symbol)
+            if event is None:
+                reasons.append(
+                    f"{symbol} is outside the core universe and has no "
+                    "recorded upcoming event"
+                )
+            elif not event["screened"]:
+                reasons.append(
+                    f"{symbol} is outside the core universe and its event "
+                    "has not passed the liquidity screen (price/volume/"
+                    "tradability recorded by the scout)"
+                )
         if req.size_usd <= 0:
             reasons.append("size_usd must be positive")
         elif req.size_usd > pos_cap:

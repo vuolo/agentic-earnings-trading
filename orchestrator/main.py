@@ -59,6 +59,10 @@ def main(argv: list[str] | None = None) -> int:
     p_bt.add_argument("--model", default=None)
 
     sub.add_parser("ml-train", help="(re)train the ML sidecar from the dataset")
+    p_mlb = sub.add_parser("ml-backfill",
+                           help="reconstruct historical training rows for the ML")
+    p_mlb.add_argument("symbol", nargs="?", default="")
+    p_mlb.add_argument("--model", default=None)
     sub.add_parser("monitor", help="run the account monitor/reconciliation agent")
 
     p_es = sub.add_parser("enable-shorting",
@@ -80,6 +84,10 @@ def main(argv: list[str] | None = None) -> int:
         return launcher.run_role("backtester", symbol=target, model=args.model)
     if args.cmd == "monitor":
         return launcher.run_role("monitor")
+    if args.cmd == "ml-backfill":
+        target = args.symbol.upper() if args.symbol else \
+            "every symbol with recorded backtest events (see get_backtest_summary)"
+        return launcher.run_role("mlbackfill", symbol=target, model=args.model)
     if args.cmd == "ml-train":
         import json as _json
 

@@ -95,6 +95,10 @@ Direction by the job's action: `long_equity` → SELL to close;
 
 You run after the close (16:20 or 16:50 ET). For each position in the kickoff:
 
+0. **Session check** (market-wide names vary): `get_equity_tradability` for
+   the symbols. AH/extended orders need extended/all-day tradability; a name
+   without it simply rides to the queued auction exit — note it, never force
+   an unsupported session.
 1. Extended-hours quote → compute AH P&L vs the kickoff's entry price (sign
    by action: long loses when price < entry; short when price > entry).
 2. **Disaster valve — ONLY when the kickoff says the valve is ARMED**: if the

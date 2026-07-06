@@ -69,3 +69,19 @@ def test_extract_features_nested():
     vec = ml.extract_features(feats, conviction=0.65)
     assert vec == {"implied_move_pct": 9.6, "rsi14": 55.0,
                    "volume_z20": 1.2, "conviction": 0.65}
+
+
+def test_training_rows_join_dataset(store, tmp_path):
+    import json as _json
+    for i in range(30):
+        up = i % 2 == 0
+        store.upsert_training_row(
+            f"SYM{i}", "2026-01-05",
+            _json.dumps({"computed": {"rsi14": 70.0 if up else 30.0,
+                                      "atr14_pct": 3.0, "pct_from_high": -2.0}}),
+            2.5 if up else -2.5,
+        )
+    X, y = ml.build_dataset(store)
+    assert len(X) == 30 and sum(y) == 15
+    status = ml.train(store, model_path=tmp_path / "m.json")
+    assert status["trained"] is True

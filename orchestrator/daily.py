@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from datetime import date, datetime, timedelta
 
 from engine.arming import arm_status
@@ -246,10 +247,46 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
             if not is_trading_day(today, full_session=True):
                 print("market closed (weekend/holiday/half-day) — no entries; done")
                 return
-            ran = 0
+            # Candidate selection (market-wide): core names always; non-core
+            # only if screened-in. Core first, then screened by avg volume.
+            # Hard cap on analyst runs per day (agent cost + entry budget).
+            max_runs = int(os.environ.get("EARNINGS_MAX_ANALYST_RUNS", "6"))
+            due, seen = [], set()
             for e in store.upcoming_events(days=5):
                 if not analyst_due(e["report_date"], e["timing"], today):
                     continue
+                if e["symbol"] in seen or e["symbol"] in cfg.macro_watch:
+                    continue
+                seen.add(e["symbol"])
+                core = e["symbol"] in cfg.universe
+                if not core and not e["screened"]:
+                    continue
+                vol = 0.0
+                if e["screen"]:
+                    try:
+                        vol = float(json.loads(e["screen"]).get("avg_volume", 0))
+                    except (ValueError, TypeError):
+                        pass
+                due.append((0 if core else 1, -vol, e))
+            due.sort(key=lambda t: (t[0], t[1]))
+            if len(due) > max_runs:
+                dropped = ", ".join(e["symbol"] for _, _, e in due[max_runs:])
+                print(f"analyst: capping at {max_runs} runs — dropped: {dropped}")
+                due = due[:max_runs]
+
+            # Non-core names need gap history before the analyst can align
+            # with it — one batched backtester run for any that lack rows.
+            need_bt = [e["symbol"] for _, _, e in due
+                       if e["symbol"] not in cfg.universe
+                       and store.backtest_summary(e["symbol"])["events"] == 0]
+            if need_bt:
+                syms = ", ".join(sorted(set(need_bt)))
+                print(f"backtester: backfilling new names first — {syms}")
+                if not dry_run:
+                    print(f"backtester exit {launcher.run_role('backtester', symbol=syms, model=model)}")
+
+            ran = 0
+            for _, _, e in due:
                 if _skip_reanalysis(store, e, cfg.policy_version):
                     print(f"analyst: {e['symbol']} {e['report_date']} already decided — skip")
                     continue

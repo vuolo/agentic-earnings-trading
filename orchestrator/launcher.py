@@ -52,7 +52,8 @@ class Role:
 ROLES: dict[str, Role] = {
     "scout": Role(
         prompt_file="scout.md",
-        rb_tools=("get_earnings_calendar", "search", "get_equity_quotes"),
+        rb_tools=("get_earnings_calendar", "search", "get_equity_quotes",
+                  "get_equity_fundamentals", "get_equity_tradability"),
         gw_tools=("get_context_pack", "record_earnings_event"),
         kickoff=(
             "Sync the upcoming earnings calendar per your instructions. "
@@ -101,7 +102,7 @@ ROLES: dict[str, Role] = {
     "executor": Role(
         prompt_file="executor.md",
         rb_tools=(
-            "get_accounts", "get_portfolio",
+            "get_accounts", "get_portfolio", "get_equity_tradability",
             "get_equity_quotes", "get_equity_positions", "get_equity_orders",
             "review_equity_order", "place_equity_order", "cancel_equity_order",
         ),
@@ -112,6 +113,16 @@ ROLES: dict[str, Role] = {
         kickoff=(
             "Execute exactly these jobs, then stop — {symbol}. "
             "Start by calling get_context_pack, then get_pending_executions."
+        ),
+    ),
+    "mlbackfill": Role(
+        prompt_file="ml-backfill.md",
+        rb_tools=("get_equity_historicals",),
+        gw_tools=("get_context_pack", "compute_indicators",
+                  "record_training_row", "get_backtest_summary"),
+        kickoff=(
+            "Reconstruct ML training rows per your instructions for: {symbol}. "
+            "Start by calling get_context_pack."
         ),
     ),
     "backtester": Role(
@@ -129,7 +140,7 @@ ROLES: dict[str, Role] = {
         gw_tools=(
             "get_context_pack", "get_performance_summary",
             "get_labeled_decisions", "get_backtest_summary",
-            "propose_policy_update",
+            "propose_policy_update", "propose_playbook_update",
         ),
         include_playbook=True,
         kickoff=(

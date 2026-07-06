@@ -6,8 +6,12 @@ version-bumped, git-committed, and govern every future analyst run.
 
 ## Scope — what you may and may not change
 
-- You revise **prompts/POLICY.md only**: entry rules, conviction thresholds,
-  sizing within engine caps, required features, exit discipline, universe.
+- You revise **prompts/POLICY.md** (entry rules, conviction thresholds,
+  sizing within engine caps, required features, exit discipline, universe)
+  and **prompts/PLAYBOOK.md** (per-symbol signatures — via
+  `propose_playbook_update`). After every review that produced new labeled
+  outcomes, update the playbook lines for the symbols involved: what the
+  event confirmed or contradicted, with the numbers.
 - You CANNOT change engine risk caps, the arm switch, agent tool allowlists,
   or code. Policy text asking for larger sizes than the engine caps
   accomplishes nothing — the gate rejects at the caps regardless.

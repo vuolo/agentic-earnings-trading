@@ -23,6 +23,12 @@ DEFAULT_UNIVERSE = (
 # for macro context only (the risk gate blocks trading them regardless).
 DEFAULT_MACRO_WATCH = ("MSFT", "GOOGL", "META", "AMZN", "AAPL")
 
+# Market-wide expansion (2026-07-05): names outside the core universe are
+# tradeable only when their event passes the liquidity screen the scout
+# records (enforced server-side by the risk gate).
+SCREEN_MIN_PRICE = 5.0            # no sub-$5 names
+SCREEN_MIN_AVG_VOLUME = 500_000   # shares/day
+
 
 @dataclass(frozen=True)
 class RiskLimits:

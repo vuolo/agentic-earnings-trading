@@ -73,6 +73,17 @@ CREATE TABLE IF NOT EXISTS meta (
     value TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS training_rows (
+    id          INTEGER PRIMARY KEY,
+    symbol      TEXT NOT NULL,
+    report_date TEXT NOT NULL,
+    features    TEXT NOT NULL,
+    label_move_pct REAL NOT NULL,
+    source      TEXT NOT NULL DEFAULT 'reconstructed',
+    created_at  TEXT NOT NULL,
+    UNIQUE (symbol, report_date)
+);
+
 CREATE TABLE IF NOT EXISTS backtests (
     id          INTEGER PRIMARY KEY,
     symbol      TEXT NOT NULL,
@@ -113,6 +124,11 @@ class Store:
         self._db.execute("PRAGMA journal_mode=WAL")
         self._migrate_v1_decisions()
         self._db.executescript(_SCHEMA)
+        cols = [r[1] for r in self._db.execute("PRAGMA table_info(events)")]
+        if "screened" not in cols:  # market-wide expansion, 2026-07-05
+            self._db.execute(
+                "ALTER TABLE events ADD COLUMN screened INTEGER NOT NULL DEFAULT 0")
+            self._db.execute("ALTER TABLE events ADD COLUMN screen TEXT")
         self._db.commit()
 
     def _migrate_v1_decisions(self) -> None:
@@ -144,6 +160,44 @@ class Store:
         self._db.close()
 
     # -- events ------------------------------------------------------------
+
+    def set_event_screen(self, event_id: int, screened: bool, screen_json: str) -> None:
+        self._db.execute(
+            "UPDATE events SET screened = ?, screen = ? WHERE id = ?",
+            (1 if screened else 0, screen_json, event_id),
+        )
+        self._db.commit()
+
+    def upcoming_event_for(self, symbol: str) -> sqlite3.Row | None:
+        return self._db.execute(
+            """SELECT * FROM events WHERE symbol = ? AND report_date >= ?
+               ORDER BY report_date LIMIT 1""",
+            (symbol.strip().upper(), _today()),
+        ).fetchone()
+
+    def upsert_training_row(
+        self, symbol: str, report_date: str, features: str,
+        label_move_pct: float, source: str = "reconstructed",
+    ) -> int:
+        self._db.execute(
+            """INSERT INTO training_rows
+               (symbol, report_date, features, label_move_pct, source, created_at)
+               VALUES (?, ?, ?, ?, ?, ?)
+               ON CONFLICT (symbol, report_date) DO UPDATE SET
+                   features = excluded.features,
+                   label_move_pct = excluded.label_move_pct""",
+            (symbol.strip().upper(), report_date, features, label_move_pct,
+             source, _now()),
+        )
+        self._db.commit()
+        row = self._db.execute(
+            "SELECT id FROM training_rows WHERE symbol = ? AND report_date = ?",
+            (symbol.strip().upper(), report_date),
+        ).fetchone()
+        return int(row["id"])
+
+    def training_rows(self) -> list[sqlite3.Row]:
+        return self._db.execute("SELECT * FROM training_rows").fetchall()
 
     def upsert_event(
         self,

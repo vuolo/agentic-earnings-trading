@@ -26,6 +26,8 @@ from .launcher import DEFAULT_MODEL, REPO_ROOT
 
 LABEL = "com.earnings.daily"
 PLIST_PATH = Path.home() / "Library" / "LaunchAgents" / f"{LABEL}.plist"
+CAF_LABEL = "com.earnings.caffeinate"
+CAF_PLIST_PATH = Path.home() / "Library" / "LaunchAgents" / f"{CAF_LABEL}.plist"
 LOGS = REPO_ROOT / "logs"
 VENV_PY = REPO_ROOT / ".venv" / "bin" / "python"
 
@@ -70,6 +72,23 @@ def _plist(hour: int, minute: int, model: str) -> dict:
     }
 
 
+def _caffeinate_plist() -> dict:
+    """Hold the system awake through market hours. The operator's Mac sleeps
+    after 1 idle minute; the only guaranteed-awake moment is the existing
+    07:55 wakepoweron (used by another schedule). Firing at 08:05 rides that
+    window and `caffeinate -i` then prevents idle sleep until ~17:10, covering
+    all four ticks. No sudo needed; weekdays only."""
+    return {
+        "Label": CAF_LABEL,
+        "ProgramArguments": ["/usr/bin/caffeinate", "-i", "-t", "32700"],
+        "StartCalendarInterval": [
+            {"Weekday": wd, "Hour": 8, "Minute": 5} for wd in range(1, 6)
+        ],
+        "RunAtLoad": False,
+        "LimitLoadToSessionType": "Aqua",
+    }
+
+
 def _gui_target() -> str:
     return f"gui/{os.getuid()}"
 
@@ -85,25 +104,35 @@ def install(hour: int, minute: int, model: str) -> int:
     subprocess.run(["launchctl", "bootout", f"{_gui_target()}/{LABEL}"],
                    capture_output=True)  # ok if not loaded
     rc = subprocess.run(["launchctl", "bootstrap", _gui_target(), str(PLIST_PATH)]).returncode
+    CAF_PLIST_PATH.write_bytes(plistlib.dumps(_caffeinate_plist()))
+    subprocess.run(["launchctl", "bootout", f"{_gui_target()}/{CAF_LABEL}"],
+                   capture_output=True)
+    caf_rc = subprocess.run(
+        ["launchctl", "bootstrap", _gui_target(), str(CAF_PLIST_PATH)]
+    ).returncode
     if rc == 0:
         times = ", ".join(f"{h:02d}:{m:02d}" for h, m in FIRE_TIMES)
         print(f"installed {LABEL}: fires daily at {times} local "
               f"(model={model})\nplist: {PLIST_PATH}\nlogs:  {LOGS}/launchd_*.log")
-        print("note: the Mac must be awake and you logged in at fire times; "
-              "`sudo pmset repeat wakeorpoweron MTWRFSU 09:19:00` wakes it "
-              "for the morning tick.")
+        print("installed com.earnings.caffeinate: weekdays 08:05, holds the "
+              "system awake ~9h (rides the existing 07:55 wake)"
+              if caf_rc == 0 else
+              f"warning: caffeinate agent failed to load (rc={caf_rc})")
+        print("note: keep the Mac plugged in + logged in during market hours; "
+              "belt-and-braces on AC: `sudo pmset -c sleep 0`.")
     else:
         print(f"launchctl bootstrap failed (rc={rc})", file=sys.stderr)
     return rc
 
 
 def uninstall() -> int:
-    subprocess.run(["launchctl", "bootout", f"{_gui_target()}/{LABEL}"],
-                   capture_output=True)
-    if PLIST_PATH.exists():
-        PLIST_PATH.unlink()
-        print(f"removed {PLIST_PATH}")
-    print(f"{LABEL} unloaded")
+    for label, path in ((LABEL, PLIST_PATH), (CAF_LABEL, CAF_PLIST_PATH)):
+        subprocess.run(["launchctl", "bootout", f"{_gui_target()}/{label}"],
+                       capture_output=True)
+        if path.exists():
+            path.unlink()
+            print(f"removed {path}")
+        print(f"{label} unloaded")
     return 0
 
 

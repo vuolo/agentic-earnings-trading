@@ -39,7 +39,12 @@ def _path_env() -> str:
     parts = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"]
     claude = shutil.which("claude")
     if claude:
-        d = str(Path(claude).resolve().parent)
+        # Use the UNRESOLVED symlink's directory (e.g. ~/.local/bin). The
+        # resolved target is version-named (…/claude/versions/<ver>), so its
+        # parent contains no executable literally called `claude` — that broke
+        # the first real launchd fire (smoke test, 2026-07-05: monitor exit
+        # 127) while passing every interactive-shell test.
+        d = str(Path(claude).parent)
         if d not in parts:
             parts.insert(0, d)
     return ":".join(parts)
@@ -53,10 +58,7 @@ def _path_env() -> str:
 FIRE_TIMES = ((9, 24), (15, 40), (16, 20), (16, 50))
 
 
-def _plist(hour: int, minute: int, model: str) -> dict:
-    intervals = [{"Hour": h, "Minute": m} for h, m in FIRE_TIMES]
-    if (hour, minute) not in FIRE_TIMES:
-        intervals.append({"Hour": hour, "Minute": minute})
+def _plist(model: str) -> dict:
     return {
         "Label": LABEL,
         "ProgramArguments": [
@@ -64,11 +66,21 @@ def _plist(hour: int, minute: int, model: str) -> dict:
         ],
         "WorkingDirectory": str(REPO_ROOT),
         "EnvironmentVariables": {"PATH": _path_env()},
-        "StartCalendarInterval": intervals,
+        "StartCalendarInterval": [{"Hour": h, "Minute": m} for h, m in FIRE_TIMES],
         "RunAtLoad": False,
         "StandardOutPath": str(LOGS / "launchd_stdout.log"),
         "StandardErrorPath": str(LOGS / "launchd_stderr.log"),
         "LimitLoadToSessionType": "Aqua",
+        # launchd-context hardening (verified live on this machine by the
+        # sibling stake-synthetics project, 2026-07-05):
+        # - iCloud can evict ~/Documents files (incl. this .venv) to dataless
+        #   stubs; launchd jobs are denied materialization on mmap/dlopen and
+        #   die with errno 11 unless this key is set.
+        "MaterializeDatalessFiles": True,
+        # - Calendar jobs default to background QoS: heavy imports (sklearn/
+        #   numpy in the morning ML step) can take 30-60x longer and blow
+        #   downstream timeouts.
+        "ProcessType": "Interactive",
     }
 
 
@@ -93,14 +105,14 @@ def _gui_target() -> str:
     return f"gui/{os.getuid()}"
 
 
-def install(hour: int, minute: int, model: str) -> int:
+def install(model: str) -> int:
     if not VENV_PY.exists():
         print(f"error: {VENV_PY} not found — create the venv first (README).",
               file=sys.stderr)
         return 1
     LOGS.mkdir(exist_ok=True)
     PLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
-    PLIST_PATH.write_bytes(plistlib.dumps(_plist(hour, minute, model)))
+    PLIST_PATH.write_bytes(plistlib.dumps(_plist(model)))
     subprocess.run(["launchctl", "bootout", f"{_gui_target()}/{LABEL}"],
                    capture_output=True)  # ok if not loaded
     rc = subprocess.run(["launchctl", "bootstrap", _gui_target(), str(PLIST_PATH)]).returncode
@@ -165,12 +177,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="orchestrator.schedule")
     sub = parser.add_subparsers(dest="cmd", required=True)
     p_install = sub.add_parser("install")
-    p_install.add_argument("--hour", type=int, default=9)
-    p_install.add_argument("--minute", type=int, default=45)
     p_install.add_argument("--model", default=DEFAULT_MODEL)
     p_show = sub.add_parser("show")
-    p_show.add_argument("--hour", type=int, default=9)
-    p_show.add_argument("--minute", type=int, default=45)
     p_show.add_argument("--model", default=DEFAULT_MODEL)
     sub.add_parser("uninstall")
     sub.add_parser("status")
@@ -178,9 +186,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.cmd == "install":
-        return install(args.hour, args.minute, args.model)
+        return install(args.model)
     if args.cmd == "show":
-        print(plistlib.dumps(_plist(args.hour, args.minute, args.model)).decode())
+        print(plistlib.dumps(_plist(args.model)).decode())
         return 0
     if args.cmd == "uninstall":
         return uninstall()

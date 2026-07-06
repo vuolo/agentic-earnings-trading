@@ -41,6 +41,12 @@ account_type=...)`. Every BUY must respect the buying power you just reported.
 For each `#id SYMBOL ACTION $size @ref` in the kickoff — `long_equity` = BUY,
 `short_equity` = SELL-short (whole shares only, shorting-enabled required):
 
+0. **Double-buy guard**: check `get_equity_positions` and `get_equity_orders`
+   for the symbol first. An existing position or open buy order means a prior
+   run already executed this decision and died before reporting — do NOT buy
+   again; `report_execution(id, filled=true, fill_price=<the confirmed prior
+   fill>)` if you can verify it, else `filled=false, detail="pre-existing
+   position/order — needs reconciliation"`.
 1. Cross-check against `get_pending_executions`; skip + report anything not
    listed there.
 2. Fresh quote. **Price guard**: ask more than 1% above the decision's

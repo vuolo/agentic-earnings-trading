@@ -261,6 +261,21 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
             if ran == 0:
                 print("analyst: no events in the decision window")
 
+            # Stale-pending guard: a pending_live decision from a PRIOR day
+            # means a run died between approval and execution. Its entry
+            # window is gone — executing a day late is a different trade.
+            # Expire it; never execute it.
+            pending = store.pending_executions()
+            from engine.store import _today as _utc_today
+            for r in pending:
+                if r["created_at"][:10] != _utc_today():
+                    store.mark_execution(
+                        r["id"], filled=False,
+                        detail="stale — entry window passed without execution "
+                               "(prior run died); expired by tick guard",
+                    )
+                    print(f"expired stale pending #{r['id']} {r['symbol']} "
+                          f"(created {r['created_at'][:10]})")
             pending = store.pending_executions()
             if pending and arm:
                 job = ("open positions before the close — buy for long_equity, "

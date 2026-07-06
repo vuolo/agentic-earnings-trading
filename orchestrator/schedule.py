@@ -28,7 +28,11 @@ LABEL = "com.earnings.daily"
 PLIST_PATH = Path.home() / "Library" / "LaunchAgents" / f"{LABEL}.plist"
 CAF_LABEL = "com.earnings.caffeinate"
 CAF_PLIST_PATH = Path.home() / "Library" / "LaunchAgents" / f"{CAF_LABEL}.plist"
-LOGS = REPO_ROOT / "logs"
+# launchd opens Standard*Path in ITS context, pre-process — an iCloud-
+# evicted log file there fails the open => EX_CONFIG spawn failure
+# (7th failure mode, found live 2026-07-06 on the first 9:24 fire).
+# Logs must live OUTSIDE iCloud-synced paths.
+LOGS = Path.home() / "Library" / "Logs" / "earnings"
 VENV_PY = REPO_ROOT / ".venv" / "bin" / "python"
 
 

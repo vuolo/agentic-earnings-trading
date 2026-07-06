@@ -358,6 +358,18 @@ Keep this section honest — dated entries only, from real runs.
   snapshotting. Policy v0.4.2 marks open exits time-critical. Research
   hypothesis parked for the strategist: fading gap-ups averaged +2.7% (n=7,
   needs shorting + more data).
+- **2026-07-06 (morning)** — **Failure modes 6+7 defused, validated on the
+  FIRST real 9:24 fire**: (6) lazy iCloud re-materialization can blow the
+  fixed 60s MCP handshake → prewarm (imports + db read, duration logged) +
+  gateway boot-evidence with retry-once; cold-state fire absorbed a real
+  63.0s re-download. (7) **launchd opens Standard*Path in its own context,
+  pre-process** — iCloud-evicted log files there fail the open → exit 78
+  EX_CONFIG with empty logs (exactly what killed the real 9:24 fire; probe
+  label with fresh log files ran perfectly). Fix: launchd logs moved to
+  ~/Library/Logs/earnings (non-iCloud) + morning idempotency guard so
+  re-fires are verify-only. Recovery tick ran clean: market-wide scout
+  recorded 51 events (junk filtered, tentative dates flagged), RECONCILE OK,
+  briefing committed; re-fire after the fix: exit 0.
 - **2026-07-06 (0315Z)** — **ML backfill complete + first trained model — an
   honest negative result**: 84/90 historical rows reconstructed (Sonnet
   agents; zero fabrication, lookahead-leakage guards held, two API edge

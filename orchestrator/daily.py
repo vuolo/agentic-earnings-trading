@@ -207,6 +207,20 @@ def _notify(text: str) -> None:
 def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm_why):
     if True:  # keep original indentation depth for the phase blocks below
         if phase == "morning":
+            if (not dry_run and
+                    store.meta_get("tick_morning_last", "")[:10] == today.isoformat()):
+                # Backup/re-fires are cheap: today's morning work is done —
+                # only re-verify that live exits are handled.
+                print("morning already completed today — verify-only pass")
+                due_v = store.due_live_closes(today.isoformat())
+                if due_v and arm:
+                    job = ("close at the open — verify/place (decision_id symbol "
+                           "action): " + ", ".join(
+                               f"#{r['id']} {r['symbol']} {r['action']}" for r in due_v))
+                    print(f"executor exit {_run_with_evidence(store, 'executor', symbol=job, model=model)}")
+                else:
+                    print("no live exits pending — done")
+                return
             # LIVE EXITS FIRST — the intraday study (2026-07-05) showed the
             # post-earnings fade is front-loaded: winners average -2.7% from
             # the open by 10:00. Every minute between 9:31 and the sell costs

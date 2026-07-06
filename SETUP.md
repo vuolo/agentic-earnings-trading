@@ -90,8 +90,8 @@ never just a shell test.** With the system disarmed (or on a weekend):
 
 ```bash
 launchctl kickstart -k gui/$(id -u)/com.earnings.daily
-tail -f logs/launchd_stdout.log            # expect a clean phase run,
-grep -E "errno=11|not found" logs/launchd_stderr.log   # …and nothing here
+tail -f ~/Library/Logs/earnings/launchd_stdout.log            # expect a clean phase run,
+grep -E "errno=11|not found" ~/Library/Logs/earnings/launchd_stderr.log   # …and nothing here
 ```
 
 The first interactive-shell-passing, launchd-failing bug here was a PATH

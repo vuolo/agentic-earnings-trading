@@ -1,5 +1,5 @@
 # Operator Briefing — 2026-07-05
-_Generated 2026-07-06T00:05:51+00:00 (deterministic; built from the store, not model output)._
+_Generated 2026-07-06T02:10:05+00:00 (deterministic; built from the store, not model output)._
 
 ## Account & risk
 - **LIVE — armed until 2026-08-04** (30d left); live caps $250.00/position, $450.00/day
@@ -17,13 +17,13 @@ _Generated 2026-07-06T00:05:51+00:00 (deterministic; built from the store, not m
   - #1 TSM pass [pass] conv 0.3 policy 0.1.0
 
 ## Plan — next 14 days (and why)
-- **TSM** reports 2026-07-16 bmo: analyst+entry 2026-07-15 ~15:40-15:58 ET, exit post-report open 2026-07-16 09:31 — window per backtest gap stats (see `get_backtest_summary`)
+- **TSM** reports 2026-07-16 bmo: analyst+entry 2026-07-15 ~15:40-15:58 ET, exit post-report open 2026-07-16 09:31 (already decided) — window per backtest gap stats (see `get_backtest_summary`)
 
 ## System health
 - morning tick last ran: never
 - afternoon tick last ran: never
 - evening tick last ran: never
-- ML sidecar: untrained — accumulating dataset (target 25 labeled rows)
+- ML sidecar: accumulating dataset (0/25 usable labeled rows)
 
 ## Longer-term roadmap status
 - Dataset: 0 closed trades + 0 labeled passes | backtests: 90 historical events

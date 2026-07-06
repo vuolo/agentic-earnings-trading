@@ -26,7 +26,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PROMPTS = REPO_ROOT / "prompts"
 ROBINHOOD_URL = "https://agent.robinhood.com/mcp/trading"
-DEFAULT_MODEL = "claude-sonnet-5"
+DEFAULT_MODEL = "claude-opus-4-8"
 
 # Read-only market-data tools an analyst may use. place_*_order / cancel_* are
 # deliberately absent and must stay absent in v1 (CLAUDE.md rule 1).
@@ -90,7 +90,7 @@ ROLES: dict[str, Role] = {
         prompt_file="monitor.md",
         rb_tools=("get_accounts", "get_portfolio", "get_equity_positions"),
         gw_tools=("get_context_pack", "report_account_snapshot"),
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-5",
         kickoff=(
             "Report the current account snapshot and reconcile broker "
             "positions against the context pack per your instructions."

@@ -90,15 +90,19 @@ def _plist(model: str) -> dict:
 
 def _caffeinate_plist() -> dict:
     """Hold the system awake through market hours. The operator's Mac sleeps
-    after 1 idle minute; the only guaranteed-awake moment is the existing
-    07:55 wakepoweron (used by another schedule). Firing at 08:05 rides that
-    window and `caffeinate -i` then prevents idle sleep until ~17:10, covering
-    all four ticks. No sudo needed; weekdays only."""
+    after 1 idle minute; the only guaranteed-awake moment is the system
+    wakepoweron (currently **06:55**, moved from 07:55 on 2026-07-06 — owned
+    by the operator's other schedule; re-anchor here if it moves again).
+    Firing at 06:57 + a 06:58 backup rides the immediate post-wake window;
+    `caffeinate -i -t 37000` then blocks idle sleep until ~17:14, covering
+    all four ticks. Duplicate fires just stack assertions — harmless.
+    No sudo needed; weekdays only."""
     return {
         "Label": CAF_LABEL,
-        "ProgramArguments": ["/usr/bin/caffeinate", "-i", "-t", "32700"],
+        "ProgramArguments": ["/usr/bin/caffeinate", "-i", "-t", "37000"],
         "StartCalendarInterval": [
-            {"Weekday": wd, "Hour": 8, "Minute": 5} for wd in range(1, 6)
+            {"Weekday": wd, "Hour": 6, "Minute": m}
+            for wd in range(1, 6) for m in (57, 58)
         ],
         "RunAtLoad": False,
         "LimitLoadToSessionType": "Aqua",

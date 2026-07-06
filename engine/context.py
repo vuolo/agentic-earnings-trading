@@ -130,12 +130,12 @@ def build_context_pack(cfg: Config, store: Store) -> str:
             lines.extend("  " + ln for ln in directives.splitlines())
 
     lines.append(
-        "strategy_windows: AMC → enter ~15:40-15:55 ET on report day, exit "
-        "same-day after-hours only when the orchestrator authorizes it "
-        "(GFV guard; whole shares only in extended hours), else next open. "
-        "BMO → enter near close the prior trading day, exit at the "
-        "post-report open. Fractional/dollar orders are market + "
-        "regular-hours only."
+        "strategy_windows: AMC → enter ~15:40-15:55 ET on report day, exit at "
+        "the NEXT OPEN (AH study: overnight completes the move; same-day AH "
+        "exits are operator-disabled by default). BMO → enter near close the "
+        "prior trading day, exit at the post-report open. Open exits are "
+        "TIME-CRITICAL (winners fade -2.7% by 10:00). Fractional/dollar "
+        "orders are market + regular-hours only."
     )
     lines.append(
         "reminders: bearish = options (no equity shorting on Robinhood); "

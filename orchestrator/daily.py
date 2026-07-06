@@ -279,6 +279,15 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
             if not candidates:
                 print("executor: no same-day AMC exits to consider")
                 return
+            # AH study (2026-07-05, n=13): next-open exits beat every fixed
+            # after-hours time (+5.74% vs +2.81% @16:20); by 16:20 many
+            # reactions are <30% priced. Same-day AH exits are OFF unless the
+            # operator flips them back on (enable-ah-exits).
+            if store.meta_get("ah_exits_enabled", "") != "1":
+                print(f"executor: {len(candidates)} AMC position(s) — holding to the "
+                      "next open per policy (AH study: overnight completes the move); "
+                      "operator can re-enable with enable-ah-exits")
+                return
             # Settlement guard, by account type:
             # - cash: GFV — if a live close already happened today, today's
             #   entry was proceeds-funded; re-selling it today is a violation.

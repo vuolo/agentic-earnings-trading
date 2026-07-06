@@ -46,6 +46,7 @@ class Role:
     kickoff: str
     builtin_tools: tuple[str, ...] = ()   # Claude Code builtins, e.g. WebSearch
     model: str | None = None              # role default; explicit --model wins
+    include_playbook: bool = False        # append prompts/PLAYBOOK.md to the mission
 
 
 ROLES: dict[str, Role] = {
@@ -66,6 +67,7 @@ ROLES: dict[str, Role] = {
             "compute_indicators", "compute_implied_move", "get_ml_prediction",
         ),
         builtin_tools=("WebSearch",),  # news/sentiment
+        include_playbook=True,
         kickoff=(
             "Analyze the upcoming earnings event for {symbol} and submit a "
             "decision per your instructions. Start by calling get_context_pack."
@@ -129,6 +131,7 @@ ROLES: dict[str, Role] = {
             "get_labeled_decisions", "get_backtest_summary",
             "propose_policy_update",
         ),
+        include_playbook=True,
         kickoff=(
             "Run a policy review per your instructions. Start by calling "
             "get_context_pack, then get_performance_summary."
@@ -185,6 +188,8 @@ def run_role(role_name: str, *, symbol: str | None = None,
 
     policy, version = policy_text_and_version()
     mission = (PROMPTS / role.prompt_file).read_text() + "\n\n---\n\n" + policy
+    if role.include_playbook and (PROMPTS / "PLAYBOOK.md").exists():
+        mission += "\n\n---\n\n" + (PROMPTS / "PLAYBOOK.md").read_text()
     kickoff = role.kickoff.format(symbol=symbol or "")
 
     allowed = (

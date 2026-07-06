@@ -1,6 +1,6 @@
 # Trading Policy
 
-Version: 0.4.2
+Version: 0.4.4
 Mode: live when the operator's arm switch is active; paper otherwise
 
 Every decision you submit is stamped with this version. v0.3.0 (operator-
@@ -21,11 +21,12 @@ operator or the evidence-backed strategist review raises them.
 ## Micro strategy (entry/exit windows)
 
 - **AMC events** (report after close, day D): decide on the afternoon tick of
-  D; entry fills ~15:45–15:58 ET, before the close. Exit: same-day
-  after-hours (16:20/16:50 ticks) when the orchestrator authorizes it —
-  requires a whole-share position (extended hours rejects fractional) and no
-  same-day sale-proceeds funding (cash-account GFV guard) — otherwise at the
-  next morning's open. Minutes-to-hours exposure.
+  D; entry fills ~15:45–15:58 ET, before the close. **Exit at the NEXT
+  MORNING'S OPEN** — the AH study (2026-07-05, n=13) showed next-open exits
+  beat every fixed after-hours time (+5.74% avg vs +2.81% selling 16:20;
+  reports land 16:05–16:30+ and the reaction completes overnight — by 16:20
+  many moves are <30% priced). Same-day AH exits exist behind an operator
+  switch (enable-ah-exits) but are OFF by default.
 - **BMO events** (report before open, day D): decide on the afternoon tick of
   the prior trading day (T-1); entry fills T-1 ~15:45–15:58 ET. Exit at the
   post-report open (morning tick, ~09:31). Overnight exposure through the
@@ -63,6 +64,9 @@ marked (server) MUST be tool outputs embedded verbatim — never hand-computed:
    dataset is small: it may temper conviction but never satisfies the entry
    rules by itself, and never overrides them.
 8. **event** — report_date, timing (bmo/amc), source of that date.
+9. **playbook** — the symbol's entry in the appended Per-Symbol Playbook.
+   State whether the setup fits or contradicts the name's documented
+   signature, and cite it when it moves your conviction or sizing.
 
 Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
 

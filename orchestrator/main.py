@@ -66,6 +66,9 @@ def main(argv: list[str] | None = None) -> int:
     p_es.add_argument("--confirm", action="store_true",
                       help="required: confirms a review_equity_order short probe succeeded")
     sub.add_parser("disable-shorting", help="block live short_equity again")
+    sub.add_parser("enable-ah-exits",
+                   help="re-enable same-day after-hours AMC exits (data says next open is better)")
+    sub.add_parser("disable-ah-exits", help="same-day AH exits off (default)")
 
     args = parser.parse_args(argv)
 
@@ -152,6 +155,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "disable-shorting":
             store.meta_set("short_capable", "")
             print("short_equity disabled — gate rejects it again.")
+            return 0
+        if args.cmd == "enable-ah-exits":
+            store.meta_set("ah_exits_enabled", "1")
+            print("same-day AH exits ENABLED (note: AH study favors next-open exits).")
+            return 0
+        if args.cmd == "disable-ah-exits":
+            store.meta_set("ah_exits_enabled", "")
+            print("same-day AH exits disabled (default; next-open exits).")
             return 0
         if args.cmd == "close":
             result = store.close_position(args.symbol.upper(), args.price, args.notes)

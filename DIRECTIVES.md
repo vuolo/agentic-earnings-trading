@@ -15,3 +15,6 @@ its context pack. Edit freely — plain English; keep it short (truncated past
    the stronger BMO evidence bar and say so explicitly in the thesis.
 4. Every thesis should note what would have made you decide differently —
    feed the strategist.
+5. SHORTS ON HOLD (margin conversion pending, ~few days): bearish theses go
+   to `bearish_option` paper legs only. The operator will explicitly say when
+   shorting is cleared — do not anticipate it.

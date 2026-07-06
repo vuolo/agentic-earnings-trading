@@ -1,10 +1,10 @@
 # Operator Briefing — 2026-07-06
-_Generated 2026-07-06T04:05:54+00:00 (deterministic; built from the store, not model output)._
+_Generated 2026-07-06T12:53:05+00:00 (deterministic; built from the store, not model output)._
 
 ## Account & risk
 - **LIVE — armed until 2026-08-04** (29d left); live caps $250.00/position, $450.00/day
-- Account (executor-reported 2026-07-06T03:08:07+00:00 (post TSLA round trip)): equity $499.96, cash $499.96, buying power $96.72
-- ⏳ Unsettled proceeds: $403.24 — tradeable next trading day (T+1); capital cycles every other day on this cash account
+- Account (executor-reported 2026-07-06T12:53:00+00:00): equity $499.96, cash $499.96, buying power $97.72
+- ⏳ Unsettled proceeds: $402.24 — tradeable next trading day (T+1); capital cycles every other day on this cash account
 - Designated account: ••••8223 ('Agentic', cash — T+1/GFV-guarded, no PDT; shorting not enabled)
 - Live closes today: 0 | same-day round trips this week: 0
 - Today's new exposure: $0.00
@@ -44,7 +44,7 @@ _Generated 2026-07-06T04:05:54+00:00 (deterministic; built from the store, not m
 - **GE** reports 2026-07-16 bmo: analyst+entry 2026-07-15 ~15:40-15:58 ET, exit post-report open 2026-07-16 09:31 — window per backtest gap stats (see `get_backtest_summary`)
 - **ISRG** reports 2026-07-16 amc: analyst+entry 2026-07-16 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open — window per backtest gap stats (see `get_backtest_summary`)
 - **NFLX** reports 2026-07-16 amc: analyst+entry 2026-07-16 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open — window per backtest gap stats (see `get_backtest_summary`)
-- **TSM** reports 2026-07-16 bmo: analyst+entry 2026-07-15 ~15:40-15:58 ET, exit post-report open 2026-07-16 09:31 — window per backtest gap stats (see `get_backtest_summary`)
+- **TSM** reports 2026-07-16 bmo: analyst+entry 2026-07-15 ~15:40-15:58 ET, exit post-report open 2026-07-16 09:31 (already decided) — window per backtest gap stats (see `get_backtest_summary`)
 - **UNH** reports 2026-07-16 bmo: analyst+entry 2026-07-15 ~15:40-15:58 ET, exit post-report open 2026-07-16 09:31 — window per backtest gap stats (see `get_backtest_summary`)
 - **FITB** reports 2026-07-17 bmo: analyst+entry 2026-07-16 ~15:40-15:58 ET, exit post-report open 2026-07-17 09:31 — window per backtest gap stats (see `get_backtest_summary`)
 - **TRV** reports 2026-07-17 bmo: analyst+entry 2026-07-16 ~15:40-15:58 ET, exit post-report open 2026-07-17 09:31 — window per backtest gap stats (see `get_backtest_summary`)
@@ -53,7 +53,7 @@ _Generated 2026-07-06T04:05:54+00:00 (deterministic; built from the store, not m
 - morning tick last ran: 2026-07-05T22:11:14
 - afternoon tick last ran: never
 - evening tick last ran: never
-- ML sidecar: trained (BELOW BASE RATE — treat as noise): 129 rows, CV accuracy 49% vs base rate 52%, as of 2026-07-06T04:05:14+00:00
+- ML sidecar: trained (BELOW BASE RATE — treat as noise): 129 rows, CV accuracy 49% vs base rate 52%, as of 2026-07-06T12:53:05+00:00
 
 ## Longer-term roadmap status
 - Dataset: 0 closed trades + 0 labeled passes | backtests: 143 historical events

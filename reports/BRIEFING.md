@@ -1,8 +1,8 @@
-# Operator Briefing — 2026-07-05
-_Generated 2026-07-06T03:28:59+00:00 (deterministic; built from the store, not model output)._
+# Operator Briefing — 2026-07-06
+_Generated 2026-07-06T04:05:54+00:00 (deterministic; built from the store, not model output)._
 
 ## Account & risk
-- **LIVE — armed until 2026-08-04** (30d left); live caps $250.00/position, $450.00/day
+- **LIVE — armed until 2026-08-04** (29d left); live caps $250.00/position, $450.00/day
 - Account (executor-reported 2026-07-06T03:08:07+00:00 (post TSLA round trip)): equity $499.96, cash $499.96, buying power $96.72
 - ⏳ Unsettled proceeds: $403.24 — tradeable next trading day (T+1); capital cycles every other day on this cash account
 - Designated account: ••••8223 ('Agentic', cash — T+1/GFV-guarded, no PDT; shorting not enabled)
@@ -53,7 +53,7 @@ _Generated 2026-07-06T03:28:59+00:00 (deterministic; built from the store, not m
 - morning tick last ran: 2026-07-05T22:11:14
 - afternoon tick last ran: never
 - evening tick last ran: never
-- ML sidecar: trained (BELOW BASE RATE — treat as noise): 84 rows, CV accuracy 44% vs base rate 52%, as of 2026-07-06T03:15:49+00:00
+- ML sidecar: trained (BELOW BASE RATE — treat as noise): 129 rows, CV accuracy 49% vs base rate 52%, as of 2026-07-06T04:05:14+00:00
 
 ## Longer-term roadmap status
 - Dataset: 0 closed trades + 0 labeled passes | backtests: 143 historical events

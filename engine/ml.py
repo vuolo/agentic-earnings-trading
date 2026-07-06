@@ -151,10 +151,15 @@ def predict(features: dict, conviction: float | None = None,
         else:
             missing.append(k)  # imputed at the mean → contributes 0
     prob_up = 1.0 / (1.0 + math.exp(-z))
+    below_base = model["cv_accuracy"] <= model["base_rate_up"]
     return {
         "available": True,
         "prob_up": round(prob_up, 3),
-        "advisory_only": model["rows"] < ADVISORY_TARGET_ROWS,
+        "advisory_only": model["rows"] < ADVISORY_TARGET_ROWS or below_base,
+        "quality": ("BELOW BASE RATE — the model currently predicts direction "
+                    "worse than always guessing the majority class; treat this "
+                    "output as noise and give it ZERO weight in your decision"
+                    if below_base else "above base rate"),
         "model": {"rows": model["rows"], "cv_accuracy": model["cv_accuracy"],
                   "base_rate_up": model["base_rate_up"],
                   "trained_at": model["trained_at"]},
@@ -166,7 +171,12 @@ def predict(features: dict, conviction: float | None = None,
 def brief_status(store: Store, model_path: Path = MODEL_PATH) -> str:
     if model_path.exists():
         m = json.loads(model_path.read_text())
-        tag = "ADVISORY" if m["rows"] < ADVISORY_TARGET_ROWS else "active"
+        if m["cv_accuracy"] <= m["base_rate_up"]:
+            tag = "BELOW BASE RATE — treat as noise"
+        elif m["rows"] < ADVISORY_TARGET_ROWS:
+            tag = "ADVISORY"
+        else:
+            tag = "active"
         return (f"trained ({tag}): {m['rows']} rows, CV accuracy "
                 f"{m['cv_accuracy']:.0%} vs base rate {m['base_rate_up']:.0%}, "
                 f"as of {m['trained_at']}")

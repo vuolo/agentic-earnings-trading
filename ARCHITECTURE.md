@@ -358,6 +358,17 @@ Keep this section honest — dated entries only, from real runs.
   snapshotting. Policy v0.4.2 marks open exits time-critical. Research
   hypothesis parked for the strategist: fading gap-ups averaged +2.7% (n=7,
   needs shorting + more data).
+- **2026-07-06 (0315Z)** — **ML backfill complete + first trained model — an
+  honest negative result**: 84/90 historical rows reconstructed (Sonnet
+  agents; zero fabrication, lookahead-leakage guards held, two API edge
+  cases caught and verified rather than skipped). First model: logistic
+  regression on 6 indicator features, 5-fold **CV accuracy 0.44 vs base
+  rate 0.524** — technical indicators alone do NOT predict earnings-gap
+  direction. The pipeline is proven end-to-end; the signal must come from
+  live-row features (implied move, sentiment, beat context, playbook fit).
+  get_ml_prediction/brief_status now explicitly flag a below-base-rate model
+  as noise so no agent quietly leans on it. Retrains daily as live rows
+  accumulate.
 - **2026-07-05 (late)** — **Full-scale live probes** (operator-directed):
   (1) 1 TSLA share round-tripped in the overnight session @ $396.17→$396.14
   (instant fills, 3¢ spread cost) — 24/5 whole-share execution confirmed at

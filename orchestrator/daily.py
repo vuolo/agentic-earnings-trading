@@ -3,8 +3,9 @@
 The orchestration logic is deterministic — agents run only where judgment is
 needed. launchd fires three times per trading day (orchestrator/schedule.py):
 
-    09:31 ET  morning    scout · labeler (paper closes + pass labels) ·
-                         executor (live exits at the open) · strategist
+    09:24 ET  morning    executor FIRST (exit orders placed pre-open, filling
+                         in the 9:30 opening auction) · monitor · scout ·
+                         labeler (paper closes + pass labels) · strategist
     15:40 ET  afternoon  analyst (events in the decision window) ·
                          executor (entries land ~15:45-15:58, just before close)
     16:50 ET  evening    executor (same-day after-hours AMC exits — only when
@@ -159,8 +160,10 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
             # money; monitor/scout/labeler all wait.
             live_closes = store.due_live_closes(today.isoformat())
             if live_closes and arm:
-                job = ("close at the open — sell for long_equity, buy-to-cover "
-                       "for short_equity (decision_id symbol action): "
+                job = ("close INTO THE OPENING AUCTION (place market orders "
+                       "NOW, pre-open, so they fill in the 9:30 cross) — sell "
+                       "for long_equity, buy-to-cover for short_equity "
+                       "(decision_id symbol action): "
                        + ", ".join(f"#{r['id']} {r['symbol']} {r['action']}"
                                    for r in live_closes))
                 print(f"executor (ARMED until {arm.expires}): {job}")

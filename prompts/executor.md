@@ -72,9 +72,15 @@ Direction by the job's action: `long_equity` → SELL to close;
 
 1. `get_equity_positions` for the actual quantity held (or short) for that
    symbol — close exactly that (it came from this decision's entry).
-2. **Morning exits (regular hours)**: MARKET order for the full quantity
-   (fractional allowed in regular hours for longs; shorts are whole-share by
-   construction), after review.
+2. **Morning exits — INTO THE OPENING AUCTION**: you are launched ~9:24 ET,
+   before the open. Immediately place a MARKET order (market_hours=
+   regular_hours) for the full quantity, after review — placed pre-open it
+   queues and fills in the 9:30:00 opening cross at the auction print, which
+   is exactly the price the strategy's backtests measure. Do NOT wait for
+   9:30 quotes first; the queue position IS the edge. Then poll
+   `get_equity_orders` after the open until the fill lands and report the
+   actual average price. (Fractional quantities queue fine on market +
+   regular_hours orders.)
 3. **After-hours exits (kickoff says extended-hours)**: extended hours allows
    whole-share LIMIT only. If the held quantity has ANY fractional part, skip
    the job and report it rides to the next open — do not partially exit.

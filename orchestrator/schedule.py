@@ -43,9 +43,12 @@ def _path_env() -> str:
     return ":".join(parts)
 
 
-# Market-phase fire times (local = ET): morning exits just after the open,
-# afternoon entries just before the close, evening AMC exits in after-hours.
-FIRE_TIMES = ((9, 31), (15, 40), (16, 20), (16, 50))  # two evening fires: catch early AMC prints fast; idempotent
+# Market-phase fire times (local = ET). Morning fires at 9:24 so exit orders
+# are placed BEFORE 9:30 and fill IN the opening auction — the exact
+# `post_open` print every backtest measures (no pipeline latency, no
+# first-minutes drift). Afternoon entries land just before the close; the
+# evening fires are the (default-off) AMC after-hours path.
+FIRE_TIMES = ((9, 24), (15, 40), (16, 20), (16, 50))
 
 
 def _plist(hour: int, minute: int, model: str) -> dict:

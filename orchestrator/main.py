@@ -54,6 +54,10 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("disarm", help="disarm live trading immediately")
 
+    p_acct = sub.add_parser("set-account",
+                            help="designate the agentic_allowed brokerage account")
+    p_acct.add_argument("number", help="full account number (from get_accounts)")
+
     p_bt = sub.add_parser("backtest", help="backfill historical earnings reactions")
     p_bt.add_argument("symbol", nargs="?", default="")
     p_bt.add_argument("--model", default=None)
@@ -145,6 +149,16 @@ def main(argv: list[str] | None = None) -> int:
                 out.parent.mkdir(exist_ok=True)
                 out.write_text(text)
                 print(f"[written to {out}]")
+            return 0
+        if args.cmd == "set-account":
+            num = args.number.strip()
+            if not num.isdigit():
+                print("account number must be numeric", file=sys.stderr)
+                return 1
+            store.meta_set("account_number", num)
+            print(f"designated account set: ••••{num[-4:]} — verify it is "
+                  "agentic_allowed=true and its investor profile is complete "
+                  "(see SETUP.md).")
             return 0
         if args.cmd == "enable-shorting":
             if not args.confirm:

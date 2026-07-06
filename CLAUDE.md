@@ -73,6 +73,8 @@ awake 08:05–17:10 weekdays. Per-run 22-min timeout.
     reports/        BRIEFING.md (auto-committed daily) · research/ (dated
                     studies + scripts)
     DIRECTIVES.md   operator steering — injected into every context pack
+    SETUP.md        new-machine bootstrap + state migration (datasets/ is
+                    gitignored!) + defanged-launchd validation procedure
 
 ## Common commands
 

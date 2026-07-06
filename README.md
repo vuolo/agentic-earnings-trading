@@ -23,7 +23,8 @@ the broker, crash-proof). Core AI/data-center names at full sizing; any other
 earnings name only through a gate-enforced liquidity screen.
 
 See `ARCHITECTURE.md` for the full design and dated findings; `CLAUDE.md`
-for working rules and the command list.
+for working rules and the command list; **`SETUP.md` to bring the system up
+on a new machine** (state in `datasets/` is gitignored — migration matters).
 
 ## Quick start
 

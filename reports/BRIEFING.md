@@ -1,9 +1,9 @@
 # Operator Briefing — 2026-07-05
-_Generated 2026-07-06T02:10:05+00:00 (deterministic; built from the store, not model output)._
+_Generated 2026-07-06T02:11:14+00:00 (deterministic; built from the store, not model output)._
 
 ## Account & risk
 - **LIVE — armed until 2026-08-04** (30d left); live caps $250.00/position, $450.00/day
-- Account (executor-reported 2026-07-06T00:05:33+00:00 (operator-verified deposit)): equity $500.00, cash $500.00, buying power $500.00
+- Account (executor-reported 2026-07-06T02:11:11+00:00): equity $500.00, cash $500.00, buying power $500.00
 - Designated account: ••••8223 ('Agentic', cash — T+1/GFV-guarded, no PDT; shorting not enabled)
 - Live closes today: 0 | same-day round trips this week: 0
 - Today's new exposure: $0.00
@@ -20,7 +20,7 @@ _Generated 2026-07-06T02:10:05+00:00 (deterministic; built from the store, not m
 - **TSM** reports 2026-07-16 bmo: analyst+entry 2026-07-15 ~15:40-15:58 ET, exit post-report open 2026-07-16 09:31 (already decided) — window per backtest gap stats (see `get_backtest_summary`)
 
 ## System health
-- morning tick last ran: never
+- morning tick last ran: 2026-07-05T22:10:05
 - afternoon tick last ran: never
 - evening tick last ran: never
 - ML sidecar: accumulating dataset (0/25 usable labeled rows)

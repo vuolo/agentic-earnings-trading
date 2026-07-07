@@ -29,7 +29,9 @@ harvest + no AH execution + gap-through). Hold cash between events.
 **Ticks (launchd, ET)**: 09:24 morning (exits→monitor→scout→labeler→
 strategist→ML→briefing) · 15:40 afternoon (analysis + entries) · 16:20/16:50
 evening (exit queueing + valve). `com.earnings.caffeinate` holds the Mac
-awake 08:05–17:10 weekdays. Per-run 22-min timeout.
+awake 06:57–~17:14 weekdays (anchored to the 06:55 wake). Per-run 22-min
+timeout. Repo lives at `~/code/agentic-trading` (moved 2026-07-07, out of
+iCloud sync; symlink at the old ~/Documents/GitHub path).
 
 ## Critical rules — memorize before touching anything
 

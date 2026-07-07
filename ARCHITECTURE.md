@@ -381,6 +381,23 @@ Keep this section honest — dated entries only, from real runs.
   get_ml_prediction/brief_status now explicitly flag a below-base-rate model
   as noise so no agent quietly leans on it. Retrains daily as live rows
   accumulate.
+- **2026-07-07 (evening)** - **Repo relocated out of iCloud sync, validated
+  by a defanged real fire**: local dir moved ~/Documents/GitHub/... →
+  `~/code/agentic-trading` (symlink at the old path), venv rebuilt, plists
+  regenerated. Because the system is armed, the mandatory kickstart was
+  defanged by temporarily patching ProgramArguments to `--phase evening
+  --dry-run` (procedure now in SETUP §6): real launchd fire from the new
+  path ran clean ("DRY RUN ... tick complete", empty stderr), canonical
+  plist reinstalled and verified. Rebuilt venv was missing the `[dev]`
+  extra (no pytest); reinstalled, 63/63 pass. Claude project memory
+  (keyed by absolute path) migrated to the new key. ~/code is not
+  iCloud-synced, so eviction failure modes 6+7 should not recur on this
+  machine; prewarm 16.1s on this fire was first-touch of the fresh venv.
+  Wake chain intact (06:55 wakepoweron; caffeinate 06:57/06:58, 37000s).
+  Bonus fix: the `schedule.py` install message still printed the stale
+  pre-re-anchor "08:05" caffeinate summary (plist content was always
+  correct); message corrected, and stale 08:05 mentions in CLAUDE.md /
+  SETUP.md refreshed too.
 - **2026-07-05 (late)** — **Full-scale live probes** (operator-directed):
   (1) 1 TSLA share round-tripped in the overnight session @ $396.17→$396.14
   (instant fills, 3¢ spread cost) — 24/5 whole-share execution confirmed at

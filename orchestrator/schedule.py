@@ -134,8 +134,8 @@ def install(model: str) -> int:
         times = ", ".join(f"{h:02d}:{m:02d}" for h, m in FIRE_TIMES)
         print(f"installed {LABEL}: fires daily at {times} local "
               f"(model={model})\nplist: {PLIST_PATH}\nlogs:  {LOGS}/launchd_*.log")
-        print("installed com.earnings.caffeinate: weekdays 08:05, holds the "
-              "system awake ~9h (rides the existing 07:55 wake)"
+        print("installed com.earnings.caffeinate: weekdays 06:57 + 06:58 "
+              "backup, holds the system awake ~10.3h (rides the 06:55 wake)"
               if caf_rc == 0 else
               f"warning: caffeinate agent failed to load (rc={caf_rc})")
         print("note: keep the Mac plugged in + logged in during market hours; "

@@ -17,18 +17,24 @@ to another MacBook. The repo travels via git; **the state does not** — see §5
 ## 2. Repo + Python environment
 
 ```bash
-gh repo clone vuolo/agentic-earnings-trading
-cd agentic-earnings-trading
+mkdir -p ~/code && cd ~/code
+gh repo clone vuolo/agentic-earnings-trading agentic-trading
+cd agentic-trading
 python3.12 -m venv .venv && source .venv/bin/activate
-pip install --upgrade pip && pip install -e ".[dev]"
+pip install --upgrade pip && pip install -e ".[dev]"   # [dev] matters: pytest lives there
 python -m pytest -q        # all tests must pass before anything else
 ```
 
-⚠️ If the repo lives under an iCloud-synced path (~/Documents, ~/Desktop):
+⚠️ Keep the repo OUT of iCloud-synced paths (~/Documents, ~/Desktop):
 iCloud can evict files to dataless stubs, which kills launchd jobs with
 errno 11. Our plists set `MaterializeDatalessFiles` to survive this, but a
-non-synced location (e.g. `~/src/`) is calmer. If synced, consider
-`brctl download .venv` after big installs.
+non-synced location is calmer - since 2026-07-07 the canonical home is
+`~/code/agentic-trading` (symlink left at the old ~/Documents/GitHub path).
+If you must run synced, consider `brctl download .venv` after big installs.
+After ANY relocation: rebuild the venv with `[dev]`, reinstall the plists
+(`python -m orchestrator.schedule install`), migrate the Claude project
+memory dir (keyed by absolute path under ~/.claude/projects/), and run the
+§6 defanged validation.
 
 ## 3. Robinhood MCP OAuth
 
@@ -75,7 +81,7 @@ evening of agent time and an empty decision history.
 
 ```bash
 python -m orchestrator.schedule install    # com.earnings.daily (09:24/15:40/16:20/16:50 ET)
-                                           # + com.earnings.caffeinate (08:05 weekdays)
+                                           # + com.earnings.caffeinate (06:57/06:58 weekdays)
 pmset -g sched                             # check existing wake events first!
 sudo pmset repeat wakeorpoweron MTWRFSU 06:50:00   # only if nothing already wakes the Mac
 # ⚠ the caffeinate agent's fire times must land ~2min AFTER the wake event —
@@ -83,7 +89,7 @@ sudo pmset repeat wakeorpoweron MTWRFSU 06:50:00   # only if nothing already wak
 # (2026-07-06: wake moved 07:55→06:55; caffeinate re-anchored to 06:57/06:58)
 ```
 
-Machine conditions at fire times: **awake** (caffeinate handles 08:05–17:10
+Machine conditions at fire times: **awake** (caffeinate handles 06:57–~17:14
 once the morning wake happens), **logged in** (lock screen is fine; logout is
 not), **plugged in**, auto-restart for OS updates disabled. Timezone must be
 US/Eastern (fire times are local).
@@ -96,6 +102,15 @@ launchctl kickstart -k gui/$(id -u)/com.earnings.daily
 tail -f ~/Library/Logs/earnings/launchd_stdout.log            # expect a clean phase run,
 grep -E "errno=11|not found" ~/Library/Logs/earnings/launchd_stderr.log   # …and nothing here
 ```
+
+**If the system is ARMED and it's a weekday** (validated 2026-07-07): defang
+by temporarily appending `--phase evening --dry-run` to the plist's
+ProgramArguments (plistlib, not hand-editing), `launchctl bootout` +
+`bootstrap` to reload, kickstart, confirm a clean "DRY RUN ... tick complete"
+in stdout and an empty stderr, then restore with
+`python -m orchestrator.schedule install` and verify the args are canonical
+again. Do it outside tick windows; never disarm/re-arm just to validate
+(re-arming is an operator act).
 
 The first interactive-shell-passing, launchd-failing bug here was a PATH
 symlink issue that only a real fire exposed. Repeat this check after ANY

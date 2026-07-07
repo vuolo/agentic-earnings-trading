@@ -20,6 +20,7 @@ import subprocess
 import sys
 import re
 import tempfile
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,7 +28,17 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 PROMPTS = REPO_ROOT / "prompts"
 ROBINHOOD_URL = "https://agent.robinhood.com/mcp/trading"
 DEFAULT_MODEL = "claude-fable-5"
-FALLBACK_MODEL = "claude-opus-4-8"  # used when the primary is unavailable/overloaded
+# Fallback when the primary is unavailable/overloaded OR when the primary's
+# per-account usage limit is exhausted. Two DIFFERENT failure classes: the CLI's
+# own --fallback-model flag covers only server overload/unavailability; a usage
+# limit ("You've reached your Fable 5 limit") is NOT caught by that flag and
+# exits 1 with the message on stdout, so run_role detects it and re-runs on the
+# fallback itself. See _USAGE_LIMIT_RE and the model-chain loop below.
+FALLBACK_MODEL = "claude-opus-4-8"
+
+# Signature of a per-account usage/quota exhaustion on stdout (exit 1). Distinct
+# from server overload (which --fallback-model handles automatically mid-stream).
+_USAGE_LIMIT_RE = re.compile(r"reached your .*\blimit\b|/usage-credits", re.I)
 
 # Read-only market-data tools an analyst may use. place_*_order / cancel_* are
 # deliberately absent and must stay absent in v1 (CLAUDE.md rule 1).
@@ -187,6 +198,46 @@ def _write_mcp_config(policy_version: str) -> Path:
     return Path(path)
 
 
+def _model_chain(primary: str) -> list[str]:
+    """Ordered models to try. On a usage-limit exhaustion of one, run_role
+    advances to the next. FALLBACK_MODEL is always the tail so a limited Fable
+    run degrades to Opus rather than failing the whole tick."""
+    chain = [primary]
+    if FALLBACK_MODEL not in chain:
+        chain.append(FALLBACK_MODEL)
+    return chain
+
+
+def _run_capturing(cmd: list[str], *, timeout: int) -> tuple[int, str]:
+    """Run cmd, tee its combined output live to our stdout, and also return it
+    so the caller can inspect for the usage-limit signature. Hard-kills at
+    `timeout` (returns 124), matching the launchd per-run cap."""
+    proc = subprocess.Popen(
+        cmd, cwd=str(REPO_ROOT), text=True, bufsize=1,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+    )
+    buf: list[str] = []
+
+    def _pump() -> None:
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            sys.stdout.write(line)
+            sys.stdout.flush()
+            buf.append(line)
+
+    pump = threading.Thread(target=_pump, daemon=True)
+    pump.start()
+    try:
+        proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+        pump.join(timeout=5)
+        return 124, "".join(buf)
+    pump.join(timeout=5)
+    return proc.returncode, "".join(buf)
+
+
 def run_role(role_name: str, *, symbol: str | None = None,
              model: str | None = None) -> int:
     if shutil.which("claude") is None:
@@ -210,30 +261,39 @@ def run_role(role_name: str, *, symbol: str | None = None,
         + list(role.builtin_tools)
     )
     mcp_config = _write_mcp_config(version)
-    cmd = [
-        "claude", "-p", kickoff,
-        "--model", model,
-    ]
-    if model != FALLBACK_MODEL:
-        cmd += ["--fallback-model", FALLBACK_MODEL]
-    cmd += [
-        "--mcp-config", str(mcp_config),
-        "--strict-mcp-config",
-        "--append-system-prompt", mission,
-        "--allowedTools", *allowed,
-    ]
-    print(f"launching {role_name} (model={model}, policy v{version}"
-          + (f", symbol={symbol}" if symbol else "") + ")\n")
+    chain = _model_chain(model)
     try:
-        # Hard cap per agent run: launchd drops a fire while the same label is
-        # still running, so a hung 16:20 run would silently eat the 16:50
-        # disaster-valve run. 22 minutes guarantees the next fire always gets
-        # its slot. A killed run is safe: queued/placed orders live at the
-        # broker and the next run reconciles via get_equity_orders.
-        return subprocess.run(cmd, cwd=str(REPO_ROOT), timeout=1320).returncode
-    except subprocess.TimeoutExpired:
-        print(f"error: {role_name} run exceeded 22min and was killed — "
-              "next tick will reconcile", file=sys.stderr)
-        return 124
+        for i, active in enumerate(chain):
+            cmd = ["claude", "-p", kickoff, "--model", active]
+            # Keep the CLI's own overload/unavailable fallback pointed at the
+            # models we haven't tried yet (comma-separated list). This is the
+            # OTHER failure class; our loop handles usage-limit exhaustion.
+            downstream = chain[i + 1:]
+            if downstream:
+                cmd += ["--fallback-model", ",".join(downstream)]
+            cmd += [
+                "--mcp-config", str(mcp_config),
+                "--strict-mcp-config",
+                "--append-system-prompt", mission,
+                "--allowedTools", *allowed,
+            ]
+            print(f"launching {role_name} (model={active}, policy v{version}"
+                  + (f", symbol={symbol}" if symbol else "") + ")\n")
+            # Hard cap per agent run: launchd drops a fire while the same label
+            # is still running, so a hung 16:20 run would silently eat the 16:50
+            # disaster-valve run. 22 minutes guarantees the next fire always
+            # gets its slot. A killed run is safe: queued/placed orders live at
+            # the broker and the next run reconciles via get_equity_orders.
+            rc, out = _run_capturing(cmd, timeout=1320)
+            if rc == 124:
+                print(f"error: {role_name} run exceeded 22min and was killed — "
+                      "next tick will reconcile", file=sys.stderr)
+                return 124
+            if rc != 0 and _USAGE_LIMIT_RE.search(out) and i + 1 < len(chain):
+                print(f"notice: {active} usage-limited — falling back to "
+                      f"{chain[i + 1]} for {role_name}", file=sys.stderr)
+                continue
+            return rc
+        return rc  # all models usage-limited; return the last rc (non-zero)
     finally:
         mcp_config.unlink(missing_ok=True)

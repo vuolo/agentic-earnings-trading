@@ -1,4 +1,4 @@
-"""Operator briefing — the human-alignment mechanism.
+"""Operator briefing - the human-alignment mechanism.
 
 Deterministic (no LLM, no cost, can't hallucinate): built straight from the
 store. The morning tick writes reports/BRIEFING.md and commits it, so the
@@ -31,7 +31,7 @@ def build_briefing(cfg: Config, store: Store) -> str:
     today = date.today()
     arm, arm_why = arm_status()
     md: list[str] = [
-        f"# Operator Briefing — {today.isoformat()}",
+        f"# Operator Briefing - {today.isoformat()}",
         f"_Generated {datetime.now(timezone.utc).isoformat(timespec='seconds')} "
         "(deterministic; built from the store, not model output)._",
         "",
@@ -39,14 +39,14 @@ def build_briefing(cfg: Config, store: Store) -> str:
     ]
     if arm:
         days_left = (date.fromisoformat(arm.expires) - today).days
-        md.append(f"- **LIVE — armed until {arm.expires}** ({days_left}d left); live caps "
+        md.append(f"- **LIVE - armed until {arm.expires}** ({days_left}d left); live caps "
                   f"{_fmt_money(arm.per_position_cap_usd)}/position, "
                   f"{_fmt_money(arm.daily_cap_usd)}/day")
         if days_left <= 7:
-            md.append(f"- ⚠️ **Arm expires in {days_left} day(s)** — re-arm deliberately: "
+            md.append(f"- ⚠️ **Arm expires in {days_left} day(s)** - re-arm deliberately: "
                       "`python -m orchestrator.main arm-live --confirm ...`")
     else:
-        md.append(f"- **PAPER** ({arm_why}) — no real orders")
+        md.append(f"- **PAPER** ({arm_why}) - no real orders")
     snap = store.meta_get("account_snapshot", "")
     if snap:
         import json
@@ -57,7 +57,7 @@ def build_briefing(cfg: Config, store: Store) -> str:
                   f"equity {_fmt_money(float(s.get('equity_usd', 0)))}, "
                   f"cash {_fmt_money(cash)}, buying power {_fmt_money(bp)}")
         if cash - bp > 0.01:
-            md.append(f"- ⏳ Unsettled proceeds: {_fmt_money(cash - bp)} — "
+            md.append(f"- ⏳ Unsettled proceeds: {_fmt_money(cash - bp)} - "
                       "tradeable next trading day (T+1); capital cycles every "
                       "other day on this cash account")
     else:
@@ -69,7 +69,7 @@ def build_briefing(cfg: Config, store: Store) -> str:
                     else "shorting not enabled")
         rule = ("PDT-guarded" if acct_type == "margin"
                 else "T+1/GFV-guarded, no PDT")
-        md.append(f"- Designated account: ••••{acct[-4:]} ('Agentic', {acct_type} — "
+        md.append(f"- Designated account: ••••{acct[-4:]} ('Agentic', {acct_type} - "
                   f"{rule}; {shorting})")
     md.append(f"- Live closes today: {store.live_closes_today()} | "
               f"same-day round trips this week: {store.day_trades_last_5d()}")
@@ -83,7 +83,7 @@ def build_briefing(cfg: Config, store: Store) -> str:
                       f"{_fmt_money(p['size_usd'])} @ {p['entry_price']} "
                       f"[{p['status']}] since {p['created_at']}")
     else:
-        md.append("- none — holding cash")
+        md.append("- none - holding cash")
 
     md += ["", "## Trade history & dataset"]
     history = store.trade_history()
@@ -110,7 +110,7 @@ def build_briefing(cfg: Config, store: Store) -> str:
                   f"[{h['status']}] conv {h['conviction']} policy {h['policy_version']}"
                   f"{outcome}")
 
-    md += ["", "## Plan — next 14 days (and why)"]
+    md += ["", "## Plan - next 14 days (and why)"]
     events = store.upcoming_events(days=14)
     if not events:
         md.append("- No universe earnings in the next 14 days. Ticks keep running: "
@@ -137,7 +137,7 @@ def build_briefing(cfg: Config, store: Store) -> str:
             for x in already) else ""
         md.append(f"- **{e['symbol']}** reports {e['report_date']} {e['timing']}: "
                   f"analyst+entry {entry_day.isoformat()} ~15:40-15:58 ET, "
-                  f"exit {exit_desc}{state} — window per backtest gap stats "
+                  f"exit {exit_desc}{state} - window per backtest gap stats "
                   "(see `get_backtest_summary`)")
     if events and planned == 0:
         md.append("- Events tracked but none enterable (timing/weekend constraints).")
@@ -158,7 +158,7 @@ def build_briefing(cfg: Config, store: Store) -> str:
             if eq > 0 and eq >= arm.daily_cap_usd * 1.5:
                 md.append(f"- 💡 Equity ({_fmt_money(eq)}) has outgrown the live caps "
                           f"({_fmt_money(arm.per_position_cap_usd)}/pos, "
-                          f"{_fmt_money(arm.daily_cap_usd)}/day) — consider re-arming "
+                          f"{_fmt_money(arm.daily_cap_usd)}/day) - consider re-arming "
                           "with higher caps to keep stacking.")
         except (ValueError, TypeError):
             pass
@@ -168,9 +168,9 @@ def build_briefing(cfg: Config, store: Store) -> str:
         "## Longer-term roadmap status",
         f"- Dataset: {perf['closed_trades']} closed trades + {perf['labeled_passes']} "
         f"labeled passes | backtests: {store.backtest_summary()['events']} historical events",
-        f"- **ML sidecar (Phase 4)**: pipeline BUILT and self-activating — trains "
+        f"- **ML sidecar (Phase 4)**: pipeline BUILT and self-activating - trains "
         f"automatically each morning; advisory until ~{ML_TRAINING_THRESHOLD} labeled rows",
-        "- Phase 2 (deterministic indicators): BUILT — compute_indicators / "
+        "- Phase 2 (deterministic indicators): BUILT - compute_indicators / "
         "compute_implied_move run server-side",
         "- Strategy is STOCKS-ONLY (operator decision): live capital goes long "
         "equity; bearish theses are paper-only dataset legs (options L2 exists "
@@ -178,7 +178,7 @@ def build_briefing(cfg: Config, store: Store) -> str:
         "- Strategist: reviews policy after every 3 new labeled outcomes (auto)",
         "",
         "## Steering",
-        "- Write standing instructions in **DIRECTIVES.md** — every agent sees them "
+        "- Write standing instructions in **DIRECTIVES.md** - every agent sees them "
         "in its context pack on the next run.",
         "- `python -m orchestrator.main report` regenerates this briefing anytime; "
         "the morning tick commits it daily.",

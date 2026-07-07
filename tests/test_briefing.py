@@ -27,7 +27,7 @@ def test_briefing_sections_present(setup):
     )
     text = build_briefing(cfg, store)
     for section in ("## Account & risk", "## Open positions",
-                    "## Trade history & dataset", "## Plan — next 14 days",
+                    "## Trade history & dataset", "## Plan - next 14 days",
                     "## Longer-term roadmap status", "## Steering"):
         assert section in text
     assert f"#{did} NVDA" in text

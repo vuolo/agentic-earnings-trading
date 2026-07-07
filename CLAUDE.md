@@ -98,6 +98,8 @@ awake 08:05–17:10 weekdays. Per-run 22-min timeout.
 ## Working with the operator (Mike)
 
 - Terse, decisive answers; show tradeoffs, give a recommendation.
+- **Never use em dashes** in any human-facing output (briefings, reports,
+  chat, commit messages). Use " - ", colons, or commas.
 - Confirm before anything that spends money beyond the armed flow, arms/
   disarms, or publishes externally.
 - Tests must pass before committing engine/gateway/orchestrator changes.

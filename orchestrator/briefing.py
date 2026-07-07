@@ -183,4 +183,8 @@ def build_briefing(cfg: Config, store: Store) -> str:
         "- `python -m orchestrator.main report` regenerates this briefing anytime; "
         "the morning tick commits it daily.",
     ]
-    return "\n".join(md) + "\n"
+    text = "\n".join(md) + "\n"
+    # Operator style rule (2026-07-07): never em dashes in human-facing
+    # output; render-time so model-written lines are covered too.
+    return (text.replace(" \u2014 ", " - ").replace("\u2014", " - ")
+                .replace(" \u2013 ", " - ").replace("\u2013", "-"))

@@ -1,30 +1,30 @@
-# Operator Briefing - 2026-07-08
-_Generated 2026-07-08T13:32:09+00:00 (deterministic; built from the store, not model output)._
+# Operator Briefing - 2026-07-09
+_Generated 2026-07-09T13:43:51+00:00 (deterministic; built from the store, not model output)._
 
 ## Account & risk
-- **LIVE - armed until 2026-08-04** (27d left); live caps $250.00/position, $450.00/day
-- Account (executor-reported 2026-07-08T13:24:22+00:00): equity $499.96, cash $499.96, buying power $499.96
+- **LIVE - armed until 2026-08-04** (26d left); live caps $250.00/position, $450.00/day
+- Account (executor-reported 2026-07-09T13:33:15+00:00): equity $493.95, cash $493.95, buying power $351.52
+- ⏳ Unsettled proceeds: $142.43 - tradeable next trading day (T+1); capital cycles every other day on this cash account
 - Designated account: ••••8223 ('Agentic', cash - T+1/GFV-guarded, no PDT; shorting not enabled)
-- Live closes today: 0 | same-day round trips this week: 0
+- Live closes today: 2 | same-day round trips this week: 0
 - Today's new exposure: $0.00
 
 ## Open positions
 - none - holding cash
 
 ## Trade history & dataset
-- Closed trades: none yet
-- Decisions by action: {'pass': 1} | labeled passes: 0 | rejected: 0 | exec failures: 0
+- Closed trades: 3 (2 live) | wins 0/3 | total P&L $-18.42
+- Decisions by action: {'bearish_option': 1, 'long_equity': 2, 'pass': 1} | labeled passes: 0 | rejected: 0 | exec failures: 0
+  - #4 SMPL bearish_option [closed_paper] conv 0.57 policy 0.7.0 → exit 15.03 (+16.47%, P&L $-12.35)
+  - #3 LEVI long_equity [closed_live] conv 0.55 policy 0.7.0 → exit 23.46 (-4.17%, P&L $-3.12)
+  - #2 PEP long_equity [closed_live] conv 0.52 policy 0.7.0 → exit 137.0 (-3.93%, P&L $-2.95)
   - #1 TSM pass [pass] conv 0.3 policy 0.1.0
 
 ## Plan - next 14 days (and why)
-- **AZZ** reports 2026-07-08 amc: analyst+entry 2026-07-08 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
-- **HELE** reports 2026-07-08 bmo: analyst+entry 2026-07-07 ~15:40-15:58 ET, exit post-report open 2026-07-08 09:31 - window per backtest gap stats (see `get_backtest_summary`)
-- **LEVI** reports 2026-07-08 amc: analyst+entry 2026-07-08 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
-- **PSMT** reports 2026-07-08 amc: analyst+entry 2026-07-08 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 - **BYRN** reports 2026-07-09 bmo: analyst+entry 2026-07-08 ~15:40-15:58 ET, exit post-report open 2026-07-09 09:31 - window per backtest gap stats (see `get_backtest_summary`)
-- **PEP** reports 2026-07-09 bmo: analyst+entry 2026-07-08 ~15:40-15:58 ET, exit post-report open 2026-07-09 09:31 - window per backtest gap stats (see `get_backtest_summary`)
+- **PEP** reports 2026-07-09 bmo: analyst+entry 2026-07-08 ~15:40-15:58 ET, exit post-report open 2026-07-09 09:31 (already decided) - window per backtest gap stats (see `get_backtest_summary`)
 - **SLP** reports 2026-07-09 amc: analyst+entry 2026-07-09 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
-- **SMPL** reports 2026-07-09 bmo: analyst+entry 2026-07-08 ~15:40-15:58 ET, exit post-report open 2026-07-09 09:31 - window per backtest gap stats (see `get_backtest_summary`)
+- **SMPL** reports 2026-07-09 bmo: analyst+entry 2026-07-08 ~15:40-15:58 ET, exit post-report open 2026-07-09 09:31 (already decided) - window per backtest gap stats (see `get_backtest_summary`)
 - **WDFC** reports 2026-07-09 amc: analyst+entry 2026-07-09 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 - **DAL** reports 2026-07-10 bmo: analyst+entry 2026-07-09 ~15:40-15:58 ET, exit post-report open 2026-07-10 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **FBK** reports 2026-07-13 amc: analyst+entry 2026-07-13 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
@@ -111,16 +111,24 @@ _Generated 2026-07-08T13:32:09+00:00 (deterministic; built from the store, not m
 - **SCHW** reports 2026-07-21 bmo: analyst+entry 2026-07-20 ~15:40-15:58 ET, exit post-report open 2026-07-21 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **SYF** reports 2026-07-21 bmo: analyst+entry 2026-07-20 ~15:40-15:58 ET, exit post-report open 2026-07-21 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **VICR** reports 2026-07-21 bmo: analyst+entry 2026-07-20 ~15:40-15:58 ET, exit post-report open 2026-07-21 09:31 - window per backtest gap stats (see `get_backtest_summary`)
-- **GOOGL** reports 2026-07-22 unknown: analyst+entry 2026-07-21 ~15:40-15:58 ET, exit post-report open 2026-07-22 09:31 - window per backtest gap stats (see `get_backtest_summary`)
+- **CSX** reports 2026-07-22 amc: analyst+entry 2026-07-22 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
+- **GEV** reports 2026-07-22 bmo: analyst+entry 2026-07-21 ~15:40-15:58 ET, exit post-report open 2026-07-22 09:31 - window per backtest gap stats (see `get_backtest_summary`)
+- **GOOG** reports 2026-07-22 amc: analyst+entry 2026-07-22 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
+- **GOOGL** reports 2026-07-22 amc: analyst+entry 2026-07-22 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
+- **IBM** reports 2026-07-22 amc: analyst+entry 2026-07-22 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
+- **NOW** reports 2026-07-22 amc: analyst+entry 2026-07-22 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
+- **T** reports 2026-07-22 bmo: analyst+entry 2026-07-21 ~15:40-15:58 ET, exit post-report open 2026-07-22 09:31 - window per backtest gap stats (see `get_backtest_summary`)
+- **TSLA** reports 2026-07-22 amc: analyst+entry 2026-07-22 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
+- **TXN** reports 2026-07-22 amc: analyst+entry 2026-07-22 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 
 ## System health
-- morning tick last ran: 2026-07-07T09:39:19
-- afternoon tick last ran: 2026-07-07T16:09:24
-- evening tick last ran: 2026-07-07T16:50:05
-- ML sidecar: trained (BELOW BASE RATE - treat as noise): 129 rows, CV accuracy 49% vs base rate 52%, as of 2026-07-08T13:32:09+00:00
+- morning tick last ran: 2026-07-08T09:32:09
+- afternoon tick last ran: 2026-07-08T15:59:43
+- evening tick last ran: 2026-07-08T16:52:01
+- ML sidecar: trained (active): 132 rows, CV accuracy 52% vs base rate 52%, as of 2026-07-09T13:43:51+00:00
 
 ## Longer-term roadmap status
-- Dataset: 0 closed trades + 0 labeled passes | backtests: 149 historical events
+- Dataset: 3 closed trades + 0 labeled passes | backtests: 156 historical events
 - **ML sidecar (Phase 4)**: pipeline BUILT and self-activating - trains automatically each morning; advisory until ~50 labeled rows
 - Phase 2 (deterministic indicators): BUILT - compute_indicators / compute_implied_move run server-side
 - Strategy is STOCKS-ONLY (operator decision): live capital goes long equity; bearish theses are paper-only dataset legs (options L2 exists on the account but is deliberately unused)

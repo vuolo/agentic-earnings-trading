@@ -1,9 +1,10 @@
-# Per-Symbol Playbook (evidence-based; updated 2026-07-05)
+# Per-Symbol Playbook (evidence-based; updated 2026-07-09)
 
 Per-name signatures from 90 events (6 quarters, daily) + 15 recent events
-(5-min/hourly/AH/premarket). These are priors, not laws — weigh them in your
-snapshot and thesis; cite the playbook line when it moves your decision.
-Source: reports/research/2026-07-05-* studies.
+(5-min/hourly/AH/premarket), plus labeled live outcomes as they land. These
+are priors, not laws — weigh them in your snapshot and thesis; cite the
+playbook line when it moves your decision.
+Source: reports/research/2026-07-05-* studies; labeled decisions #2-#4.
 
 - **TSM** (bmo, reports ~2am ET): small up-gaps (5/6, +2 to +6%), day-0 drift
   NEGATIVE 6/6, and the fade starts in premarket (Apr: only 4:30–5am beat the
@@ -13,8 +14,8 @@ Source: reports/research/2026-07-05-* studies.
   day-0 6/6. Weak gap edge — demand more than usual before going long into
   its print; a documented pass is often right.
 - **ORCL**: day-0 drift POSITIVE 5/6 regardless of gap direction — the one
-  consistent extender. Note it in the thesis; the strategist is evaluating an
-  ORCL-specific hold-to-close variant.
+  consistent extender. Note it in the thesis; hold-to-close variants remain
+  unauthorized (policy v0.7.1) until labeled evidence spans several events.
 - **MRVL**: drift followed the gap 6/6 — momentum name both directions.
 - **HPE**: gap-up faded 4/4; drift NEVER followed the gap (0/6); June: +34%
   gap bled to +4.7% within 3 days. Great gaps, terrible holds — never
@@ -47,18 +48,50 @@ Cross-cutting (all 90 events): moderate up-gaps (+2–10%) fade day-0 (−2.2 to
 −2.6% avg); moderate down-gaps (5–10%) bounce slightly (+0.7%); giant gaps
 (>10%) are name-specific — use the lines above, not the average.
 
+Cross-cutting (labeled live outcomes, n=3, added 2026-07-09):
+- **An n ≤ 6 backtest gap DIRECTION is a variance estimate, not an edge.** It
+  has been wrong 3 of 3 (#2 PEP up_rate 0.67 → down; #3 LEVI mean +3.32% →
+  down; #4 SMPL up_rate 0.33 → +17.06% UP). Read `up_rate` and `mean_pct` as
+  "how wide is this name's distribution," and source your DIRECTION from
+  technicals, guidance, sentiment, or a playbook line. Conviction is capped at
+  0.60 on a backtest-only lean (policy v0.7.1).
+- **The implied move beats the historical tail as a risk estimate.** Realized
+  gaps breached the 6-quarter extreme in 2 of 3 events; implied was the closer
+  number both times (#4 SMPL: implied 16.97% vs realized 17.06%, historical
+  tail 11.23%. #2 PEP: implied 3.29% vs realized 3.93%, historical worst
+  2.78%). Size against `max(implied, |historical tail|)`.
+- **The opening auction is the capture, again.** SMPL printed 15.03 in the
+  auction and traded 13.47 by 09:39 ET, −10.4% in nine minutes.
+
 ## Screened candidates, week of 2026-07-06 (6 quarters daily, backfilled 7/5)
 
-- **DAL** (bmo 7/10): the week's best setup — gap up-rate 0.83, mean +5.8%,
-  worst −4.1%. Standard non-core sizing rules apply, but the stats earn the
-  top of that range.
-- **PEP** (bmo 7/9): tight, boring gaps (std 2.2%) — mild either way;
-  exploration size at most.
-- **LEVI** (amc 7/8): middling coin-flip gaps; nothing special either way.
+Realized (labeled outcomes, 2026-07-09):
+
+- **SMPL** (bmo 7/9) — **traded bearish paper, WRONG, gap +17.06%** (#4).
+  The old "DANGER / strong pass candidate" line described VARIANCE (worst gap
+  −27%, std 14%, implied 17%), not direction, and was read as a bearish edge.
+  Its 0.33 up-rate on n=6 predicted nothing. Implied move called the magnitude
+  to 0.1pp. Treat SMPL as a wide-tailed coin flip: floor size, both directions
+  respected, and never let the −27% tail masquerade as a short thesis.
+- **PEP** (bmo 7/9) — **traded long, WRONG, gap −3.93%** (#2, −$2.95). Not the
+  "tight, boring" name the std 2.2% implied: the realized gap was ~1.8σ and
+  breached the 6-quarter worst (−2.78%). Cheap-into-the-print (−16% off high,
+  cut estimates, target cuts) did NOT produce a relief pop. Exploration size
+  only, and widen your dispersion prior beyond the backtest std.
+- **LEVI** (amc 7/8) — **traded long, WRONG, gap −4.17%** (#3, −$3.06).
+  Beat-and-fade at the 52w high, the exact risk the thesis named. Six straight
+  EPS beats and a +21.4% avg surprise still leave the gap up-rate at 0.50 —
+  **beats do not produce up-gaps in LEVI**. Proximity to the 52w high raises
+  the bar for good news; it is not momentum confirmation.
+
+Forward-looking:
+
+- **DAL** (bmo 7/10): on paper the week's best setup — gap up-rate 0.83, mean
+  +5.8%, worst −4.1%. Caution: that 0.83 is an n=6 direction prior, the class
+  that is 0-for-3 live. Standard non-core sizing; do not let the up-rate alone
+  carry conviction past 0.60, and size against max(implied, 4.1%).
 - **WDFC** (amc 7/9): post-open drift fades 5/6 (mean −3.7%) — if held, the
   auction exit is non-negotiable here.
-- **SMPL** (bmo 7/9): DANGER — gap up-rate 0.33, worst −27%. The sizing
-  check fails above minimum size; strong pass candidate.
 - **PENG** (amc 7/7): AI/HPC-adjacent but wide-tailed (worst −17.8%,
   up-rate ~0.5) — minimum size only despite the thematic fit.
 - **EPAC / PSMT / AZZ**: coin-flip direction, −10 to −12% tails, modest

@@ -1,10 +1,10 @@
-# Per-Symbol Playbook (evidence-based; updated 2026-07-09)
+# Per-Symbol Playbook (evidence-based; updated 2026-07-15)
 
 Per-name signatures from 90 events (6 quarters, daily) + 15 recent events
 (5-min/hourly/AH/premarket), plus labeled live outcomes as they land. These
 are priors, not laws — weigh them in your snapshot and thesis; cite the
 playbook line when it moves your decision.
-Source: reports/research/2026-07-05-* studies; labeled decisions #2-#4.
+Source: reports/research/2026-07-05-* studies; labeled decisions #2-#7.
 
 - **TSM** (bmo, reports ~2am ET): small up-gaps (5/6, +2 to +6%), day-0 drift
   NEGATIVE 6/6, and the fade starts in premarket (Apr: only 4:30–5am beat the
@@ -15,7 +15,7 @@ Source: reports/research/2026-07-05-* studies; labeled decisions #2-#4.
   its print; a documented pass is often right.
 - **ORCL**: day-0 drift POSITIVE 5/6 regardless of gap direction — the one
   consistent extender. Note it in the thesis; hold-to-close variants remain
-  unauthorized (policy v0.7.1) until labeled evidence spans several events.
+  unauthorized (policy v0.7.2) until labeled evidence spans several events.
 - **MRVL**: drift followed the gap 6/6 — momentum name both directions.
 - **HPE**: gap-up faded 4/4; drift NEVER followed the gap (0/6); June: +34%
   gap bled to +4.7% within 3 days. Great gaps, terrible holds — never
@@ -48,24 +48,36 @@ Cross-cutting (all 90 events): moderate up-gaps (+2–10%) fade day-0 (−2.2 to
 −2.6% avg); moderate down-gaps (5–10%) bounce slightly (+0.7%); giant gaps
 (>10%) are name-specific — use the lines above, not the average.
 
-Cross-cutting (labeled live outcomes, n=3, added 2026-07-09):
+Cross-cutting (labeled live outcomes, n=6, updated 2026-07-15):
 - **An n ≤ 6 backtest gap DIRECTION is a variance estimate, not an edge.** It
-  has been wrong 3 of 3 (#2 PEP up_rate 0.67 → down; #3 LEVI mean +3.32% →
-  down; #4 SMPL up_rate 0.33 → +17.06% UP). Read `up_rate` and `mean_pct` as
-  "how wide is this name's distribution," and source your DIRECTION from
-  technicals, guidance, sentiment, or a playbook line. Conviction is capped at
-  0.60 on a backtest-only lean (policy v0.7.1).
+  has now been wrong 6 of 6 (#2 PEP up_rate 0.67 → down; #3 LEVI mean +3.32%
+  → down; #4 SMPL up_rate 0.33 → +17.06% UP; #5 DAL up_rate 0.83 → down;
+  #6 ERIC mean +2.94% → −11.10%; #7 CAG up_rate 0.80 → down). Read `up_rate`
+  and `mean_pct` as "how wide is this name's distribution," and source your
+  DIRECTION from a concrete forward catalyst, guidance, sentiment, or a
+  playbook line. Conviction is capped at 0.60 on a weak-basis lean (policy
+  v0.7.2).
+- **Longs are 0-for-4; cheapness / beats / momentum are NOT up-catalysts.**
+  Every failed long rested on a backward-looking leg and gapped down: #2 PEP
+  (cheap + target cuts) −3.93%; #3 LEVI (6 beats near 52w high) −4.17%;
+  #5 DAL (6-for-6 beats + rising trend) −0.61%; #6 ERIC (de-rated + pre-print
+  pop) −11.10%. 5 of 6 labeled events down-gapped — a risk-off tendency in
+  this sample. The lone live win was #7 CAG, a bearish leg sourced from a
+  concrete negative catalyst (imminent dividend cut, new CEO, −17.9% YoY EPS),
+  which overrode its own bullish backtest (up_rate 0.80). Name the forward
+  catalyst; do not default bearish (small sample, shorts are paper-only).
 - **The implied move beats the historical tail as a risk estimate.** Realized
-  gaps breached the 6-quarter extreme in 2 of 3 events; implied was the closer
-  number both times (#4 SMPL: implied 16.97% vs realized 17.06%, historical
-  tail 11.23%. #2 PEP: implied 3.29% vs realized 3.93%, historical worst
-  2.78%). Size against `max(implied, |historical tail|)`.
-- **The opening auction is the capture, again.** SMPL printed 15.03 in the
-  auction and traded 13.47 by 09:39 ET, −10.4% in nine minutes.
+  gaps breached the 6-quarter extreme in 3 of 6 events; implied was the closer
+  or safer number each time (#4 SMPL: implied 16.97% vs realized 17.06%,
+  historical tail 11.23%. #2 PEP: implied 3.29% vs realized 3.93%, worst
+  2.78%. #6 ERIC: realized −11.10% breached the −10.39% worst; max()+$75 floor
+  still capped the loss at −$8.33). Size against `max(implied, |hist tail|)`.
+- **The opening auction is the capture.** SMPL printed 15.03 in the auction
+  and traded 13.47 by 09:39 ET, −10.4% in nine minutes.
 
-## Screened candidates, week of 2026-07-06 (6 quarters daily, backfilled 7/5)
+## Screened candidates (backtest priors; realized outcomes noted)
 
-Realized (labeled outcomes, 2026-07-09):
+Realized (labeled outcomes):
 
 - **SMPL** (bmo 7/9) — **traded bearish paper, WRONG, gap +17.06%** (#4).
   The old "DANGER / strong pass candidate" line described VARIANCE (worst gap
@@ -83,16 +95,31 @@ Realized (labeled outcomes, 2026-07-09):
   EPS beats and a +21.4% avg surprise still leave the gap up-rate at 0.50 —
   **beats do not produce up-gaps in LEVI**. Proximity to the 52w high raises
   the bar for good news; it is not momentum confirmation.
+- **DAL** (bmo 7/10) — **traded long, WRONG (barely), gap −0.61%** (#5,
+  −$0.46). The week's best paper setup (up-rate 0.83, mean +5.8%) and the
+  direction still missed — the n=6 up-rate class is now 0-for-4. Two
+  corroborating legs (rising trend + 6-for-6 beats) did NOT save the long;
+  the 0.60 cap and $75 floor kept the miss trivial, which is the system
+  working. Backward-looking beats/trend are not a forward catalyst here.
+- **ERIC** (bmo 7/14) — **traded long, WRONG, gap −11.10%** (#6, −$8.33).
+  A de-rated telecom (−17% off high) with a pre-print +4% pop and a 4/6 beat
+  record gapped hard DOWN into flat-RAN/job-cut guidance. Cheapness + momentum
+  were not a catalyst; the falling SMA50 / −6% rel-strength were the truer
+  read. Realized breached both the implied (7.86%) and worst-gap (−10.39%)
+  estimates — wide-tailed, floor size only, and treat a de-rating as a reason
+  to demand a forward catalyst, not as one.
+- **CAG** (bmo 7/15) — **traded bearish paper, RIGHT, gap −2.54%** (#7,
+  +$1.91). The only live WIN. Direction came from a concrete negative catalyst
+  (imminent dividend cut at a 10% yield, new CEO, −17.9% YoY EPS, distressed
+  tape) and correctly OVERRODE the bullish backtest (up_rate 0.80). The
+  template for a catalyst-sourced lean: exploration size, forward catalyst
+  named, backtest direction ignored.
 
-Forward-looking:
+Backtest priors (no labeled trade yet):
 
-- **DAL** (bmo 7/10): on paper the week's best setup — gap up-rate 0.83, mean
-  +5.8%, worst −4.1%. Caution: that 0.83 is an n=6 direction prior, the class
-  that is 0-for-3 live. Standard non-core sizing; do not let the up-rate alone
-  carry conviction past 0.60, and size against max(implied, 4.1%).
-- **WDFC** (amc 7/9): post-open drift fades 5/6 (mean −3.7%) — if held, the
+- **WDFC** (amc): post-open drift fades 5/6 (mean −3.7%) — if held, the
   auction exit is non-negotiable here.
-- **PENG** (amc 7/7): AI/HPC-adjacent but wide-tailed (worst −17.8%,
+- **PENG** (amc): AI/HPC-adjacent but wide-tailed (worst −17.8%,
   up-rate ~0.5) — minimum size only despite the thematic fit.
 - **EPAC / PSMT / AZZ**: coin-flip direction, −10 to −12% tails, modest
   liquidity — exploration size, and a named disqualifier is respectable.

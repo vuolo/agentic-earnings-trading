@@ -1,6 +1,6 @@
 # Trading Policy
 
-Version: 0.7.1
+Version: 0.7.2
 Mode: live when the operator's arm switch is active; paper otherwise
 
 Every decision you submit is stamped with this version. v0.3.0 (operator-
@@ -10,8 +10,18 @@ your own arithmetic; sentiment comes from WebSearch with cited headlines; the
 ML advisory is recorded on every decision. v0.7.1 (strategist review,
 2026-07-09, n=3 labeled outcomes): the risk check now uses the IMPLIED move
 as the adverse-move estimate when it exceeds the historical tail, and a
-backtest-only directional lean caps conviction at 0.60. Participation
-defaults, windows, and exit discipline are unchanged.
+backtest-only directional lean caps conviction at 0.60. v0.7.2 (strategist
+review, 2026-07-15, n=6 labeled outcomes): longs are 0-for-4 live (PEP #2,
+LEVI #3, DAL #5, ERIC #6 all gapped DOWN) and 5 of 6 labeled events
+down-gapped; the only winner (#7 CAG bearish, +$1.91) sourced its direction
+from a concrete forward catalyst, not the backtest. Refinement: backward-
+looking cheapness/de-rating, EPS beat-records, and pre-print momentum no
+longer qualify as the independent leg that lifts conviction past 0.60 — all
+four failed longs rested on exactly those. The v0.7.1 implied-move sizing is
+validated (ERIC's realized −11.1% breached both estimates, yet max() + the
+$75 floor still capped the loss at −$8.33). Participation defaults, windows,
+default direction, and exit discipline are unchanged — shorts remain
+paper-only.
 
 ## Macro strategy
 
@@ -71,8 +81,9 @@ marked (server) MUST be tool outputs embedded verbatim — never hand-computed:
    expectancy in this name. Report the **adverse_move_pct** you sized against
    (see Sizing) and how it compares to BOTH the implied move and the worst
    (or, for bearish legs, best) historical gap. With n ≤ 6 the historical
-   extreme is a biased-low tail estimate — v0.7.1 evidence: the realized gap
-   breached it in 2 of 3 events (decisions #2 PEP, #4 SMPL).
+   extreme is a biased-low tail estimate — the realized gap has now breached
+   it in 3 of 6 events (decisions #2 PEP, #4 SMPL, #6 ERIC −11.1% vs worst
+   −10.4%); the implied move was the closer number each time.
 4. **historical_reactions** — last 8 quarters where available: day-after move
    % per report, beat/miss record, direction consistency.
 5. **valuation_context** — P/E, market cap; note extremes.
@@ -109,15 +120,29 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
     bearish paper legs are participation too).
   - Shorts use the backtest's BEST gap (upside tail) as the historical input
     to the risk check — a short's worst case is the stock gapping UP.
-- **Conviction cap on backtest-only leans (v0.7.1)**: if your directional lean
-  rests primarily on the backtest's gap direction (`up_rate` or the sign of
-  `mean_pct`) with n ≤ 6, cap conviction at **0.60**. A 6-sample up-rate has a
-  standard error near 0.20 — it cannot separate a coin flip from a real edge.
-  The gap direction was wrong in 3 of 3 labeled events (#2 PEP up_rate 0.67 →
-  down; #3 LEVI mean +3.32% → down; #4 SMPL up_rate 0.33 → +17.06% up). To
-  exceed 0.60, cite at least one independent corroborating leg (technicals,
-  fundamentals/guidance, sentiment, or the per-symbol playbook). This caps
-  SIZE, never participation — trade anyway, smaller.
+- **Live calibration caution (v0.7.2 — do NOT flip the default)**: through
+  n=6, longs are 0-for-4 and 5 of 6 labeled events down-gapped — a risk-off
+  earnings tendency in this sample. This is NOT a mandate to default bearish
+  (the sample is small, sector-mixed, and shorts are paper-only); the
+  participate-by-default direction stands. It IS a mandate to name, in the
+  thesis, the concrete forward catalyst a long rests on. "Cheap / beats /
+  momentum" is not one — see the cap below. The only live win (#7 CAG) was a
+  bearish paper leg sourced from a concrete negative catalyst.
+- **Conviction cap on weak-basis leans (v0.7.1, tightened v0.7.2)**: cap
+  conviction at **0.60** whenever your directional lean rests primarily on
+  either (a) the backtest's gap direction (`up_rate` or the sign of
+  `mean_pct`) with n ≤ 6 — a 6-sample up-rate has a standard error near 0.20,
+  it cannot separate a coin flip from a real edge, and it was wrong in 6 of 6
+  labeled events (#2 PEP 0.67 → down; #3 LEVI +3.32% → down; #4 SMPL 0.33 →
+  up; #5 DAL 0.83 → down; #6 ERIC +2.94% → down; #7 CAG 0.80 → down); or
+  (b) backward-looking cheapness/de-rating, an EPS beat-record, or pre-print
+  momentum — the four failed longs each leaned on these and went 0-for-4
+  (#2 PEP cheap+target-cuts → −3.93%; #3 LEVI 6 beats near 52w high → −4.17%;
+  #5 DAL 6-for-6 beats + rising trend → −0.61%; #6 ERIC de-rated + pre-print
+  pop → −11.10%). To exceed 0.60, the corroborating leg must be a CONCRETE
+  FORWARD catalyst (a specific guidance signal, a pending event, product/
+  sector news) or a per-symbol playbook line — never those backward-looking
+  legs alone. This caps SIZE, never participation — trade anyway, smaller.
 
 ## Sizing (real-money, ~$500 account — conviction is the dial)
 

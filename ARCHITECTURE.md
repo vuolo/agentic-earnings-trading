@@ -496,3 +496,15 @@ Keep this section honest — dated entries only, from real runs.
   verified over stdio JSON-RPC against the live snapshot (DAL-type setup:
   $109.27, max-loss estimate $4.37). RiskGate caps unchanged and still rule.
   83 tests passing.
+- **2026-07-16 (night, second study)** — **Exit-horizon study: the 9:30
+  auction confirmed as the best statistical exit at every n.** Operator
+  asked open vs 10am/11am/3pm/close/next-day. Layer 1 (n=324 backtests):
+  open +0.31%/event vs same-day close -0.05%; post-open drift -0.27%,
+  positive 48%; up-gaps fade -1.16%, down-gaps bounce +0.60%. Layer 2 (n=52
+  Apr-Jul market-wide, 30-min bars): every intraday exit (10:00-16:00)
+  costs 0.65-1.05%/event vs the auction, none beats it in >52% of events.
+  Layer 3 (n=48 daily): T+1..T+3 never beat open in more than half of
+  events; apparent T+2/T+3 mean edge is MRVL's 06-02 catalyst plus bull
+  beta, and down-gap events get strictly worse held to T+3. No policy
+  change; loser-side AH exit remains the only parked hypothesis. See
+  reports/research/2026-07-16-exit-horizon-study.md.

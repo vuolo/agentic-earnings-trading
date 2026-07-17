@@ -78,6 +78,7 @@ ROLES: dict[str, Role] = {
         gw_tools=(
             "get_context_pack", "submit_decision", "get_backtest_summary",
             "compute_indicators", "compute_implied_move", "get_ml_prediction",
+            "compute_position_size",
         ),
         builtin_tools=("WebSearch",),  # news/sentiment
         include_playbook=True,

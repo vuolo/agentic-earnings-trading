@@ -34,6 +34,21 @@ class Verdict:
         return "approved" if self.approved else "rejected: " + "; ".join(self.reasons)
 
 
+def effective_caps(cfg: Config) -> tuple[float, float]:
+    """Per-position and daily caps: engine limits, tightened by the arm file
+    in live mode. Shared by the gate and the sizing tool so the recommended
+    size can never exceed what the gate would approve."""
+    pos_cap = cfg.limits.max_position_usd
+    daily_cap = cfg.limits.max_daily_new_exposure_usd
+    if cfg.mode == "live":
+        from . import arming
+        arm, _ = arming.arm_status()
+        if arm is not None:
+            pos_cap = min(pos_cap, arm.per_position_cap_usd)
+            daily_cap = min(daily_cap, arm.daily_cap_usd)
+    return pos_cap, daily_cap
+
+
 class RiskGate:
     def __init__(self, cfg: Config, store: Store):
         self.cfg = cfg
@@ -44,9 +59,7 @@ class RiskGate:
         limits = self.cfg.limits
         symbol = req.symbol.strip().upper()
 
-        # Effective caps: engine caps, tightened by the arm file in live mode.
-        pos_cap = limits.max_position_usd
-        daily_cap = limits.max_daily_new_exposure_usd
+        pos_cap, daily_cap = effective_caps(self.cfg)
         if self.cfg.mode == "live":
             from . import arming
             arm, why = arming.arm_status()
@@ -55,9 +68,6 @@ class RiskGate:
                     f"live mode requested but {why} — the operator must run "
                     "`python -m orchestrator.main arm-live --confirm`"
                 )
-            else:
-                pos_cap = min(pos_cap, arm.per_position_cap_usd)
-                daily_cap = min(daily_cap, arm.daily_cap_usd)
         elif self.cfg.mode != "paper":
             reasons.append(f"unknown mode '{self.cfg.mode}'")
         if req.action not in TRADE_ACTIONS:

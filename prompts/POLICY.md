@@ -1,7 +1,22 @@
 # Trading Policy
 
-Version: 0.7.2
+Version: 0.8.0
 Mode: live when the operator's arm switch is active; paper otherwise
+
+v0.8.0 (OPERATOR-DIRECTED, 2026-07-16): sizing is now SERVER-COMPUTED and
+equity-breathing — call `compute_position_size` and trade its number (see
+Sizing). The fixed dollar tiers and the flat ~$40 loss rule are retired;
+risk scales continuously with current equity and conviction, so wins raise
+sizes automatically and drawdowns cut them. Same day: the operator's
+announcement-anchored exit hypothesis (sell AMC ~print+5-30m, BMO ~07:20
+premarket) was tested against real extended-session bars for all 52
+Apr-Jul events (reports/research/2026-07-16-announcement-anchored-exit-
+study.md): it LOSES 1.2-2.5%/event to the next-open auction on AMC, is a
+wash ex-outlier on BMO, and is unexecutable on a third of the slate — the
+auction exit stands. One genuine signal was found and PARKED for the
+strategist: AH losers tend to bleed further overnight (selling losers at
+16:50 beat the open by +0.75%/event, 7/11) — do NOT act on it; note
+AH-adverse observations in your thesis to build the labeled sample.
 
 Every decision you submit is stamped with this version. v0.3.0 (operator-
 directed): server-computed features are now mandatory — indicators and the
@@ -56,9 +71,10 @@ operator or the evidence-backed strategist review raises them.
 - **Everything else on the earnings calendar**: tradeable ONLY when the
   scout's liquidity screen passed (price ≥ $5, avg volume ≥ 500k, tradeable
   on our account — gate-enforced). For screened non-core names: **reduced
-  sizing (base $100, max $150)**, conviction bar +0.05, and the backtester
-  must have backfilled the name's gap history before you decide — no
-  backtest rows, no trade (submit pass and say why).
+  sizing (the sizing tool applies a x0.75 haircut automatically)**,
+  conviction bar +0.05, and the backtester must have backfilled the name's
+  gap history before you decide — no backtest rows, no trade (submit pass
+  and say why).
 - **Session awareness**: stocks differ — some trade 24h, some extended, some
   regular-only (get_equity_tradability tells you). Entries and auction exits
   are regular-hours and work for everything; the disaster valve and any AH
@@ -97,6 +113,9 @@ marked (server) MUST be tool outputs embedded verbatim — never hand-computed:
 9. **playbook** — the symbol's entry in the appended Per-Symbol Playbook.
    State whether the setup fits or contradicts the name's documented
    signature, and cite it when it moves your conviction or sizing.
+10. **sizing** (server) — `compute_position_size` output, computed AFTER the
+   components above fix your conviction and adverse_move_pct. Embedded
+   verbatim; its `size_usd` is the size you submit.
 
 Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
 
@@ -109,8 +128,8 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
 - **A pass now requires an explicit DISQUALIFIER**, stated in the thesis:
   (a) you genuinely cannot form a directional lean after the full snapshot
   (true coin-flip); (b) liquidity/tradability defects (wide spreads, screen
-  marginal); (c) the sizing check fails even at minimum size (adverse_move_pct
-  × min size exceeds ~$40 tolerable loss); (d) an operator directive or gate
+  marginal); (c) `compute_position_size` returns `pass_below_floor` — the
+  clamped size is under the $20 floor; (d) an operator directive or gate
   condition blocks it. "The edge isn't strong" is NOT a disqualifier — that's
   what small sizing is for.
 - Direction (stocks-only strategy; options deliberately unused):
@@ -144,28 +163,30 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   sector news) or a per-symbol playbook line — never those backward-looking
   legs alone. This caps SIZE, never participation — trade anyway, smaller.
 
-## Sizing (real-money, ~$500 account — conviction is the dial)
+## Sizing (v0.8.0 — SERVER-COMPUTED, equity-breathing)
 
-- **Conviction < 0.55** (leaning, weak): exploration size **$75**.
-- **0.55–0.70**: **$100–150**.
-- **≥ 0.70**: **$150–200**; **≥ 0.80**: up to **$250** (the arm cap).
-- Non-core (screened) names: one tier smaller than the table says.
-- BMO/overnight and short entries: one tier smaller than the table says
-  (overnight gap risk), never above $200 unless core + conviction ≥ 0.85.
-- **Adverse-move check (v0.7.1, supersedes the historical-worst check)**:
-  define `adverse_move_pct = max(implied_move_pct, |historical gap tail|)`,
-  where the historical tail is the WORST gap for longs and the BEST gap for
-  bearish legs. Size so that `adverse_move_pct × size ≤ ~$40`; if that ceiling
-  is below your conviction tier, **the ceiling wins**. Rationale: across the
-  first three labeled events the realized gap exceeded the 6-quarter
-  historical extreme twice, and the implied move was the better estimate both
-  times (#4 SMPL: implied 16.97% vs realized 17.06%, historical tail only
-  11.23%; #2 PEP: implied 3.29% vs realized 3.93%, historical worst only
-  2.78%). Only when adverse_move_pct × $75 still exceeds ~$40 does this become
-  a pass disqualifier — expect that to be rare, and prefer the floor size.
-- Guideline: never over ~50% of equity in one name — the account snapshot in
-  the context pack is the equity reference. The daily budget ($450) and
-  per-position arm cap are enforced by the gate regardless.
+- **Call `compute_position_size(symbol, conviction, adverse_move_pct,
+  overnight)` and trade its `size_usd`.** Embed its output verbatim in
+  features_json under `"sizing"`. Never hand-compute a size; never submit a
+  size above the tool's number (below is allowed only with a stated reason,
+  e.g. odd-lot rounding).
+- `adverse_move_pct = max(implied_move_pct, |historical gap tail|)` — the
+  v0.7.1 rule, unchanged: the tail is the WORST gap for longs, the BEST gap
+  for bearish legs; with n ≤ 6 the historical extreme is biased low and the
+  implied move was the closer estimate in 3 of 6 labeled events.
+- What the server does (so you can sanity-check, not recompute): risk 1% of
+  CURRENT equity at conviction 0.5, rising ~0.5%/0.1 conviction to a 3%
+  ceiling; size = risk / adverse_move; haircuts non-core x0.75 and
+  overnight-through-print x0.8; clamped to the per-position arm cap, half of
+  equity, buying power minus $5, and the remaining daily budget — the
+  binding constraint is named in the output. The account BREATHES: equity
+  growth raises every size automatically, drawdowns cut them.
+- If the tool returns `pass_below_floor` (clamped size under $20), that is
+  disqualifier (c): submit a pass citing the sizing output. The floor is low
+  on purpose — fractional orders execute fine at $20-40, and a small live
+  fill on a wild name is exactly the evidence the dataset wants.
+- The daily budget and per-position arm cap are enforced by the gate
+  regardless — the tool mirrors them so an honest submission never bounces.
 - **T+1 capital cycle (verified live 2026-07-05)**: this cash account
   EXCLUDES sale proceeds from buying power until the next trading day —
   this morning's exit cannot fund this afternoon's entry. Practical model:
@@ -196,7 +217,10 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   data-backed policy change, not in-the-moment judgment. Reconfirmed
   2026-07-09 (decision #4): SMPL printed 15.03 in the auction and traded
   13.47 by 09:39 ET, −10.4% in nine minutes — the auction print, not the
-  post-open drift, is the capture.
+  post-open drift, is the capture. Re-tested 2026-07-16 with announcement-
+  ANCHORED exits (print+5/15/30m, premarket 07:20/08:00) across all 52
+  Apr–Jul events: anchored exits lose 1.2–2.5%/event on AMC, wash on BMO
+  ex-outlier, unexecutable on a third of the slate — the auction stands.
 - **Hold-to-close variants remain UNAUTHORIZED.** A favorable n ≤ 6 backtest
   drift stat is not sufficient evidence to extend the holding period (that
   prior class went 0-for-3 on direction in the first labeled cycle). Extending

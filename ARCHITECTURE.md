@@ -473,3 +473,26 @@ Keep this section honest — dated entries only, from real runs.
   rows) and the capped analyst slots now rank by historical mean |gap|
   instead of raw volume (edge_rank; 07-17 slate correctly kept ACI/RF/TFC/
   FITB over FERG/ALV). 74 tests passing.
+- **2026-07-16 (night)** — **Announcement-anchored exit study (operator
+  hypothesis) + dynamic sizing overhaul (operator-directed, policy
+  v0.8.0).** (1) Tested "sell right after the print" (AMC print+5/15/30m,
+  BMO premarket 07:20/08:00) against real extended-session bars for all 52
+  Apr-Jul events with detected (not clock-assumed) print bars: anchored
+  exits LOSE 1.2-2.5%/event to the next-open auction on AMC (10/20 better,
+  avg +1.4-2.7% vs +3.9%), are a wash ex-outlier on BMO (the +1.9% headline
+  was one FALSE print detection on BYRN that dodged a -21% crash by luck),
+  and are structurally unexecutable on 8/28 AMC + 10/24 BMO tapes (thin AH/
+  premarket, platform opens premarket at 07:00, whole shares only). Auction
+  exit stands. Real finding PARKED for the strategist: AH losers bleed
+  further overnight (sell-losers-at-16:50 beat the open +0.75%/event, 7/11;
+  conditional strategy +0.41%/event overall; CRDO whipsaw is the
+  counterexample). See reports/research/2026-07-16-announcement-anchored-
+  exit-study.md. (2) Sizing is now SERVER-COMPUTED and equity-breathing:
+  engine/sizing.py + gateway compute_position_size — risk 1%..3% of CURRENT
+  equity by conviction, / adverse_move_pct, haircuts non-core x0.75 and
+  overnight x0.8, clamped to arm cap / half-equity / buying power / daily
+  budget, $20 participation floor (fractional executes fine; wild names now
+  trade small instead of passing). Tiers and the flat $40-loss rule retired;
+  verified over stdio JSON-RPC against the live snapshot (DAL-type setup:
+  $109.27, max-loss estimate $4.37). RiskGate caps unchanged and still rule.
+  83 tests passing.

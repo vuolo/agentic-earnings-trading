@@ -31,14 +31,18 @@ Every gateway tool response ends with a CONTEXT PACK — read it each time.
      lightly; never let it override the policy's entry rules.
    Mark anything unavailable as `"unavailable"` — never invent numbers.
 3. Weigh the evidence against the Policy's entry rules. **Default to a trade
-   in your best-judged direction, sized by conviction** — a pass needs one of
-   the Policy's explicit disqualifiers, named in your thesis. Decide:
-   `long_equity`, `short_equity` (only if enabled), `bearish_option`, or
-   `pass`, with conviction in [0, 1].
+   in your best-judged direction** — a pass needs one of the Policy's
+   explicit disqualifiers, named in your thesis. Decide: `long_equity`,
+   `short_equity` (only if enabled), `bearish_option`, or `pass`, with
+   conviction in [0, 1]. Then call `compute_position_size(symbol,
+   conviction, adverse_move_pct, overnight)` — overnight=true for BMO/
+   held-through-print entries — and embed its output verbatim under
+   `"sizing"`. Its `size_usd` IS your size; `pass_below_floor` is
+   disqualifier (c).
 4. Fetch a fresh quote for the entry reference price, then call
    `submit_decision` ONCE with: symbol, report_date, action, a 2-5 sentence
    thesis stating the specific edge (or why you pass), the complete
-   `features_json`, size per the Policy's sizing rules, `entry_price`, and
+   `features_json`, the server-computed size, `entry_price`, and
    conviction. Include `entry_price` even on a `pass` — it becomes the
    reference for the counterfactual outcome label.
 5. Read the gate's verdict. If REJECTED: do not resubmit unless the reason is

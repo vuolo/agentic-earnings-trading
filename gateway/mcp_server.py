@@ -352,6 +352,48 @@ def compute_implied_move(underlying_price: float, call_mid: float, put_mid: floa
 
 
 @mcp.tool()
+def compute_position_size(
+    symbol: str, conviction: float, adverse_move_pct: float,
+    overnight: bool = False,
+) -> str:
+    """SERVER-COMPUTED position size (policy v0.8.0) — the account breathes:
+    risk scales with CURRENT equity and conviction, divided by the adverse
+    move, haircut for non-core/overnight, clamped to every cap the gate
+    enforces. Call it AFTER assembling the snapshot, with adverse_move_pct =
+    max(implied_move_pct, |historical gap tail|). Embed the result VERBATIM
+    in features_json under "sizing" and submit its size_usd. If it says
+    pass_below_floor, that is policy disqualifier (c) — submit a pass citing
+    it. The RiskGate still rules at submit time."""
+    from engine import sizing
+    from engine.risk import effective_caps
+    snap = {}
+    try:
+        snap = json.loads(STORE.meta_get("account_snapshot", "") or "{}")
+    except json.JSONDecodeError:
+        pass
+    equity = float(snap.get("equity_usd") or 0.0)
+    bp = float(snap.get("buying_power_usd") or 0.0)
+    note = ""
+    if equity <= 0:
+        # No executor-reported snapshot (e.g. fresh paper session): size
+        # against the engine's paper default so the tool still answers.
+        equity = bp = 500.0
+        note = "no account snapshot on file — sized against $500 paper default"
+    pos_cap, daily_cap = effective_caps(CFG)
+    core = symbol.strip().upper() in CFG.universe
+    out = sizing.dynamic_size(
+        equity_usd=equity, buying_power_usd=bp,
+        conviction=conviction, adverse_move_pct=adverse_move_pct,
+        pos_cap_usd=pos_cap,
+        daily_remaining_usd=max(daily_cap - STORE.today_new_exposure(), 0.0),
+        core=core, overnight=overnight,
+    )
+    if note:
+        out["note_snapshot"] = note
+    return json.dumps(out, indent=1)
+
+
+@mcp.tool()
 def get_ml_prediction(features_json: str, conviction: float = -1.0) -> str:
     """The ML sidecar's read on your feature snapshot: P(post-event move up).
     ADVISORY while the dataset is small — weigh it, don't obey it; record its

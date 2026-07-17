@@ -457,3 +457,19 @@ Keep this section honest — dated entries only, from real runs.
   std 2.39% / worst −1.66% (best risk-adjusted in universe; drift fades
   6/6). Tail-risk names for $100–120 sizing: COHR (−20%), HPE (−15%),
   ORCL (−14.5%).
+- **2026-07-16 (evening)** — **Context pack was benching screened names -
+  found via real run logs, fixed, regression-tested.** The pack's
+  `upcoming_earnings` list still filtered to the core-15 universe (predates
+  the v0.6.0 market-wide expansion), so screened non-core events never
+  appeared. Fable-run analysts had tolerated the gap (verified events via
+  market data and traded DAL/CAG/UAL anyway); on 2026-07-16 Fable was
+  usage-limited, all six analysts fell back to Opus 4.8, obeyed the mission's
+  step-1 "no recorded event" stop literally, and the day's slate (NFLX, ISRG,
+  AA, plus 07-17 bmo entries) went entirely untraded: 0 decisions. Fix:
+  pack now lists core plus screened events tagged `(core)`/`(screened)`,
+  macro-watch names excluded (2 -> 144 events on the live store). Same
+  session: ML training rows enriched with prior-reaction gap features
+  (strict pre-event cutoff, no lookahead; CV 52% -> 54.4% on the same 136
+  rows) and the capped analyst slots now rank by historical mean |gap|
+  instead of raw volume (edge_rank; 07-17 slate correctly kept ACI/RF/TFC/
+  FITB over FERG/ALV). 74 tests passing.

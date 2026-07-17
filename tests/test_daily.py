@@ -126,6 +126,24 @@ def test_day_trades_counter(store):
     assert store.live_closes_today() == 1  # GFV guard input
 
 
+def test_edge_rank_prefers_gap_history_over_volume(store):
+    from orchestrator.daily import edge_rank
+    import json as _json
+    # Mover: small volume but big historical reactions.
+    store.upsert_backtest("MOVR", "2026-01-15", "amc", pre_close=100.0, post_open=112.0)
+    store.upsert_backtest("MOVR", "2026-04-16", "amc", pre_close=100.0, post_open=91.0)
+    # Sleeper: huge volume, tiny historical gaps.
+    store.upsert_backtest("SLPR", "2026-01-15", "bmo", pre_close=100.0, post_open=100.5)
+    mover = {"symbol": "MOVR", "screen": _json.dumps({"avg_volume": 600_000})}
+    sleeper = {"symbol": "SLPR", "screen": _json.dumps({"avg_volume": 90_000_000})}
+    fresh = {"symbol": "NEWB", "screen": _json.dumps({"avg_volume": 2_000_000})}
+    ranked = sorted([sleeper, mover, fresh], key=lambda e: edge_rank(store, e, False))
+    assert [e["symbol"] for e in ranked] == ["MOVR", "SLPR", "NEWB"]
+    # Core always outranks non-core, whatever the history says.
+    assert edge_rank(store, {"symbol": "NVDA", "screen": None}, True) < \
+        edge_rank(store, mover, False)
+
+
 def test_backtest_upsert_and_summary(store):
     store.upsert_backtest("NVDA", "2026-02-25", "amc",
                           pre_close=100.0, post_open=104.0, post_close=106.0)

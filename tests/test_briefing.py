@@ -70,6 +70,29 @@ def test_directives_injected_into_context_pack(setup, tmp_path, monkeypatch):
     assert "Hold cash unless the stats are excellent." in pack
 
 
+def test_pack_lists_screened_noncore_events(setup):
+    """Regression (2026-07-16): the pack filtered upcoming_earnings to the
+    core universe, so screened non-core events were invisible — analysts hit
+    their step-1 'no recorded event' stop and benched whole slates."""
+    from datetime import datetime, timedelta, timezone
+    cfg, store = setup
+    d1 = (datetime.now(timezone.utc).date() + timedelta(days=3)).isoformat()
+    d2 = (datetime.now(timezone.utc).date() + timedelta(days=4)).isoformat()
+    store.upsert_event("TSM", d1, "bmo")  # core
+    eid = store.upsert_event("NFLX", d1, "amc")  # non-core, screened
+    store.set_event_screen(eid, True, '{"avg_volume": 39000000}')
+    store.upsert_event("PENNY", d2, "bmo")  # non-core, unscreened
+    eid_macro = store.upsert_event("MSFT", d2, "amc")  # macro watch
+    store.set_event_screen(eid_macro, True, '{"avg_volume": 20000000}')
+    pack = build_context_pack(cfg, store)
+    upcoming = pack.split("upcoming_earnings")[1].split("macro_events")[0]
+    assert f"TSM {d1} bmo (core)" in upcoming
+    assert f"NFLX {d1} amc (screened)" in upcoming
+    assert "PENNY" not in upcoming
+    assert "MSFT" not in upcoming  # macro names are context, never tradeable
+    assert f"MSFT {d2} amc" in pack.split("macro_events")[1]
+
+
 def test_missing_directives_is_fine(setup, tmp_path, monkeypatch):
     cfg, store = setup
     monkeypatch.setattr(context, "DIRECTIVES_PATH", tmp_path / "nope.md")

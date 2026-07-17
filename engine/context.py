@@ -103,12 +103,20 @@ def build_context_pack(cfg: Config, store: Store) -> str:
         lines.append("open_paper_positions: (none)")
 
     events = store.upcoming_events(days=14)
-    tradeable = [e for e in events if not cfg.universe or e["symbol"] in cfg.universe]
+    # Market-wide (policy v0.6.0): core names are always tradeable; any other
+    # name is tradeable once its event passed the scout's liquidity screen.
+    # Both belong in the pack — the analyst's step-1 "no recorded event" stop
+    # keys off this list, so omitting screened names silently benches them.
     macro = [e for e in events if e["symbol"] in cfg.macro_watch]
+    tradeable = [e for e in events
+                 if e["symbol"] not in cfg.macro_watch
+                 and (not cfg.universe or e["symbol"] in cfg.universe
+                      or e["screened"])]
     if tradeable:
         lines.append("upcoming_earnings (14d):")
         for e in tradeable:
-            lines.append(f"  - {e['symbol']} {e['report_date']} {e['timing']}")
+            tag = "core" if e["symbol"] in cfg.universe else "screened"
+            lines.append(f"  - {e['symbol']} {e['report_date']} {e['timing']} ({tag})")
     else:
         lines.append("upcoming_earnings (14d): (none recorded — scout run needed)")
     if macro:

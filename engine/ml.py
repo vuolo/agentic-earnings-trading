@@ -31,7 +31,48 @@ NUMERIC_KEYS = (
     "implied_move_pct", "rsi14", "atr14_pct", "realized_vol20_pct",
     "volume_z20", "pct_from_high", "pct_from_low", "rel_strength20_pct",
     "conviction",
+    # Prior-reaction gap history (see gap_history_features / the backtest
+    # block mapping in extract_features — train and serve share these names).
+    "gap_n", "gap_up_rate", "gap_mean_pct", "gap_mean_abs_pct",
+    "gap_std_pct", "gap_worst_pct", "gap_best_pct",
 )
+
+# Live snapshots embed get_backtest_summary verbatim under "backtest"; its
+# gap stats are the same quantities gap_history_features computes for
+# reconstructed rows, so map them onto the shared feature names.
+GAP_STAT_ALIASES = {
+    "n": "gap_n", "up_rate": "gap_up_rate", "mean_pct": "gap_mean_pct",
+    "mean_abs_pct": "gap_mean_abs_pct", "std_pct": "gap_std_pct",
+    "worst_pct": "gap_worst_pct", "best_pct": "gap_best_pct",
+}
+
+
+def gap_history_features(store: Store, symbol: str, before_date: str) -> dict[str, float]:
+    """Prior-reaction gap stats from backtest rows STRICTLY before
+    before_date (YYYY-MM-DD). The strict cutoff is the lookahead guard: an
+    event's own reaction (report_date == before_date) never feeds its
+    features, only earlier quarters do."""
+    gaps = [
+        (r["post_open"] - r["pre_close"]) / r["pre_close"] * 100
+        for r in store.backtest_events(symbol)
+        if r["report_date"] < before_date
+        and r["pre_close"] and r["post_open"]
+        and r["pre_close"] > 0 and r["post_open"] > 0
+    ]
+    if not gaps:
+        return {}
+    n = len(gaps)
+    mean = sum(gaps) / n
+    var = sum((g - mean) ** 2 for g in gaps) / n
+    return {
+        "gap_n": float(n),
+        "gap_up_rate": round(sum(g > 0 for g in gaps) / n, 4),
+        "gap_mean_pct": round(mean, 4),
+        "gap_mean_abs_pct": round(sum(abs(g) for g in gaps) / n, 4),
+        "gap_std_pct": round(var ** 0.5, 4),
+        "gap_worst_pct": round(min(gaps), 4),
+        "gap_best_pct": round(max(gaps), 4),
+    }
 
 
 def extract_features(features: dict, conviction: float | None = None) -> dict[str, float]:
@@ -41,6 +82,11 @@ def extract_features(features: dict, conviction: float | None = None) -> dict[st
     for sub in ("computed", "indicators", "implied_move"):
         if isinstance(features.get(sub), dict):
             sources.append(features[sub])
+    bt = features.get("backtest")
+    if isinstance(bt, dict) and isinstance(bt.get("gap_t1close_to_postopen"), dict):
+        stats = bt["gap_t1close_to_postopen"]
+        sources.append({dst: stats[src] for src, dst in GAP_STAT_ALIASES.items()
+                        if src in stats})
     out: dict[str, float] = {}
     for key in NUMERIC_KEYS:
         for src in sources:
@@ -66,6 +112,14 @@ def build_dataset(store: Store) -> tuple[list[dict[str, float]], list[int]]:
         except (json.JSONDecodeError, TypeError):
             continue
         vec = extract_features(feats, row.get("conviction"))
+        # Gap history is computed fresh from the backtests table (cutoff =
+        # decision date, so only earlier quarters count — later backfills
+        # still describe events that predate the decision). The stored
+        # snapshot stays untouched and wins where it already has a value.
+        cutoff = (row.get("created_at") or "")[:10]
+        if cutoff:
+            for k, v in gap_history_features(store, row["symbol"], cutoff).items():
+                vec.setdefault(k, v)
         if len(vec) < 3:  # too sparse to learn from
             continue
         X.append(vec)
@@ -78,6 +132,8 @@ def build_dataset(store: Store) -> tuple[list[dict[str, float]], list[int]]:
         except (json.JSONDecodeError, TypeError):
             continue
         vec = extract_features(feats)
+        for k, v in gap_history_features(store, row["symbol"], row["report_date"]).items():
+            vec.setdefault(k, v)
         if len(vec) < 3:
             continue
         X.append(vec)

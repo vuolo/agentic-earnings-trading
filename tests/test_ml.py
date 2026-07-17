@@ -71,6 +71,54 @@ def test_extract_features_nested():
                    "volume_z20": 1.2, "conviction": 0.65}
 
 
+def test_gap_history_strict_cutoff_no_lookahead(store):
+    store.upsert_backtest("NVDA", "2025-11-19", "amc", pre_close=100.0, post_open=104.0)
+    store.upsert_backtest("NVDA", "2026-02-25", "amc", pre_close=100.0, post_open=98.0)
+    store.upsert_backtest("NVDA", "2026-05-27", "amc", pre_close=100.0, post_open=110.0)
+    # Cutoff ON an event's own date excludes that event and everything later.
+    g = ml.gap_history_features(store, "NVDA", "2026-02-25")
+    assert g["gap_n"] == 1.0
+    assert g["gap_mean_pct"] == pytest.approx(4.0)
+    g = ml.gap_history_features(store, "NVDA", "2026-05-28")
+    assert g["gap_n"] == 3.0
+    assert g["gap_best_pct"] == pytest.approx(10.0)
+    assert g["gap_worst_pct"] == pytest.approx(-2.0)
+    assert g["gap_up_rate"] == pytest.approx(2 / 3, abs=1e-3)
+    # No prior events → no features, never zeros.
+    assert ml.gap_history_features(store, "NVDA", "2025-11-19") == {}
+
+
+def test_extract_features_maps_live_backtest_block():
+    feats = {"computed": {"rsi14": 55.0},
+             "backtest": {"symbol": "DAL", "events": 6,
+                          "gap_t1close_to_postopen": {
+                              "n": 6, "mean_pct": 1.1, "std_pct": 2.9,
+                              "mean_abs_pct": 2.4, "up_rate": 0.83,
+                              "worst_pct": -3.9, "best_pct": 5.2}}}
+    vec = ml.extract_features(feats)
+    assert vec["gap_n"] == 6.0
+    assert vec["gap_mean_abs_pct"] == 2.4
+    assert vec["gap_up_rate"] == 0.83
+    assert vec["gap_worst_pct"] == -3.9
+    assert vec["rsi14"] == 55.0
+
+
+def test_training_rows_gain_gap_history(store):
+    store.upsert_backtest("MU", "2025-12-18", "amc", pre_close=100.0, post_open=106.0)
+    store.upsert_backtest("MU", "2026-03-19", "amc", pre_close=100.0, post_open=94.0)
+    store.upsert_training_row(
+        "MU", "2026-03-19",
+        json.dumps({"computed": {"rsi14": 60.0, "atr14_pct": 3.0,
+                                 "pct_from_high": -5.0}}),
+        -6.0,
+    )
+    X, y = ml.build_dataset(store)
+    assert len(X) == 1 and y == [0]
+    # Only the 2025-12-18 event predates the row — its own gap must not leak.
+    assert X[0]["gap_n"] == 1.0
+    assert X[0]["gap_mean_pct"] == pytest.approx(6.0)
+
+
 def test_training_rows_join_dataset(store, tmp_path):
     import json as _json
     for i in range(30):

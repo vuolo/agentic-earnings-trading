@@ -75,6 +75,23 @@ def resolve_phase(now: datetime) -> str:
     return "evening"
 
 
+def edge_rank(store: Store, event, core: bool) -> tuple:
+    """Sort key for the day's capped analyst slots: core names first, then by
+    historical mean absolute gap (the payoff proxy for a gap-capture
+    strategy), with the screen's avg volume as the tiebreak — raw volume says
+    nothing about how far a name moves on its print. Names without gap
+    history rank at edge 0 (backfill happens after selection)."""
+    vol = 0.0
+    if event["screen"]:
+        try:
+            vol = float(json.loads(event["screen"]).get("avg_volume", 0))
+        except (ValueError, TypeError):
+            pass
+    gap = store.backtest_summary(event["symbol"])["gap_t1close_to_postopen"] or {}
+    edge = float(gap.get("mean_abs_pct") or 0.0)
+    return (0 if core else 1, -edge, -vol)
+
+
 def _skip_reanalysis(store: Store, event, policy_version: str) -> bool:
     """Skip an event that already has a decision — unless every decision on it
     is a pass from an older policy version (strategy changed; re-look)."""
@@ -314,8 +331,9 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                 print("market closed (weekend/holiday/half-day) — no entries; done")
                 return
             # Candidate selection (market-wide): core names always; non-core
-            # only if screened-in. Core first, then screened by avg volume.
-            # Hard cap on analyst runs per day (agent cost + entry budget).
+            # only if screened-in. Core first, then by historical mean |gap|
+            # (edge_rank — volume only breaks ties). Hard cap on analyst runs
+            # per day (agent cost + entry budget).
             max_runs = int(os.environ.get("EARNINGS_MAX_ANALYST_RUNS", "6"))
             due, seen = [], set()
             for e in store.upcoming_events(days=5):
@@ -327,22 +345,16 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                 core = e["symbol"] in cfg.universe
                 if not core and not e["screened"]:
                     continue
-                vol = 0.0
-                if e["screen"]:
-                    try:
-                        vol = float(json.loads(e["screen"]).get("avg_volume", 0))
-                    except (ValueError, TypeError):
-                        pass
-                due.append((0 if core else 1, -vol, e))
-            due.sort(key=lambda t: (t[0], t[1]))
+                due.append((*edge_rank(store, e, core), e))
+            due.sort(key=lambda t: t[:3])
             if len(due) > max_runs:
-                dropped = ", ".join(e["symbol"] for _, _, e in due[max_runs:])
+                dropped = ", ".join(e["symbol"] for *_, e in due[max_runs:])
                 print(f"analyst: capping at {max_runs} runs — dropped: {dropped}")
                 due = due[:max_runs]
 
             # Non-core names need gap history before the analyst can align
             # with it — one batched backtester run for any that lack rows.
-            need_bt = [e["symbol"] for _, _, e in due
+            need_bt = [e["symbol"] for *_, e in due
                        if e["symbol"] not in cfg.universe
                        and store.backtest_summary(e["symbol"])["events"] == 0]
             if need_bt:
@@ -352,7 +364,7 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                     print(f"backtester exit {_run_with_evidence(store, 'backtester', symbol=syms, model=model)}")
 
             ran = 0
-            for _, _, e in due:
+            for *_, e in due:
                 if _skip_reanalysis(store, e, cfg.policy_version):
                     print(f"analyst: {e['symbol']} {e['report_date']} already decided — skip")
                     continue

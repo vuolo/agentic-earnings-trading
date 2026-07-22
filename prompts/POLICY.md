@@ -1,7 +1,34 @@
 # Trading Policy
 
-Version: 0.8.1
+Version: 0.8.2
 Mode: live when the operator's arm switch is active; paper otherwise
+
+v0.8.2 (strategist review, 2026-07-22, n=18 labeled events, 5 new since
+v0.8.1): the bearish streak broke and the break is informative. #23 NLY
+(-1.21%, +$1.44) and #25 ONB (-1.03%, +$0.28) won; #22 T (+4.27%, -$3.00)
+and #24 EQT (+2.04%, -$1.77) are the first bearish paper losses. The split
+is LOCATION: every high-bar asymmetry winner (KEY, DX, NLY, ONB, SCHW
+counterfactual) sat within ~4% of its 52-week high after a run; both losers
+were bearish into names at or bouncing off 52-week LOWS (EQT 0.4% off the
+low with 6/6 beats and a named relief-pop risk; T a +12% three-week bounce
+off the 7/2 low). Four PATCH refinements: (1) template (ii) now requires
+the name EXTENDED NEAR ITS 52-WEEK HIGH - bearish into a de-rated or
+at-the-low name is the mirror of the failed cheapness longs and needs a
+concrete negative forward catalyst, else conviction caps at 0.50; (2) the
+ML confident-down band (prob_up < 0.35) is now 7-for-10, not 5-for-5 - its
+two deepest reads ever split (#23 NLY 0.175 right, #24 EQT 0.199 wrong);
+corroboration only, unchanged; (3) short-DTE weekly straddles are
+validated as trustworthy implied estimates (#22 T 5.19% on a 2-DTE weekly
+vs 4.27% realized, which also breached the +3.43% historical best gap -
+the 4th tail breach, max() sizing reaffirmed) while distant monthlies
+still run hot (#25 ONB 10.8% vs 1.03%); (4) report-date verification is
+now explicit in the event snapshot component - #12 WBS and #15 FERG were
+decided against mis-dated calendar rows (FERG had no event at all; next
+report 2026-08-10). The v0.8.1 on-time paper-exit rule WORKED: all four
+7/21 legs closed at the 7/22 auction window, no slot contamination. 14 of
+18 labeled events are down/flat but 3 of the 5 newest were UP (#22 T,
+#24 EQT, #21 WBS counterfactual) - the down-tape is fading and "do NOT
+default bearish" now has direct P&L teeth.
 
 v0.8.1 (strategist review, 2026-07-21, n=13 labeled outcomes, 7 new since
 v0.7.2): bearish paper legs are 6-for-6 non-losing (#7 CAG +$1.91, #8 UAL
@@ -114,7 +141,11 @@ marked (server) MUST be tool outputs embedded verbatim — never hand-computed:
    move overstates the EVENT move - flag it as an upper bound. In the
    7/17-7/21 batch implied exceeded realized in all 6 events (#13 RYAAY:
    implied 10.16% on a 35-DTE straddle vs 5.37% realized; #18 KEY 6.98% vs
-   1.64%). Sizing still uses max() - the bias is conservative.
+   1.64%). Conversely (v0.8.2), a 2-3 DTE weekly with fine strikes is a
+   trustworthy estimate: #22 T implied 5.19% vs 4.27% realized, #24 EQT
+   4.2% vs 2.04%, #23 NLY 2.45% vs 1.21% - while #25 ONB's 30-DTE monthly
+   said 10.8% vs 1.03% realized. Sizing still uses max() - the bias is
+   conservative.
 2. **computed** (server) — `compute_indicators` over ~3 months of daily bars:
    rsi14, atr14_pct, realized_vol20_pct, volume_z20, sma trend, distance from
    high/low, relative strength vs. benchmark.
@@ -124,8 +155,9 @@ marked (server) MUST be tool outputs embedded verbatim — never hand-computed:
    (see Sizing) and how it compares to BOTH the implied move and the worst
    (or, for bearish legs, best) historical gap. With n ≤ 6 the historical
    extreme is a biased-low tail estimate — the realized gap has now breached
-   it in 3 of 6 events (decisions #2 PEP, #4 SMPL, #6 ERIC −11.1% vs worst
-   −10.4%); the implied move was the closer number each time.
+   it in 4 labeled events (decisions #2 PEP, #4 SMPL, #6 ERIC −11.1% vs worst
+   −10.4%, and #22 T +4.27% vs best +3.43%); the implied move was the closer
+   number each time.
 4. **historical_reactions** — last 8 quarters where available: day-after move
    % per report, beat/miss record, direction consistency.
 5. **valuation_context** — P/E, market cap; note extremes.
@@ -133,14 +165,21 @@ marked (server) MUST be tool outputs embedded verbatim — never hand-computed:
    cited headlines. Note any macro_watch reports in the same week (correlated
    AI-complex risk).
 7. **ml_advisory** (server) — `get_ml_prediction` output, recorded on every
-   decision. The sidecar is now above base rate (136 rows, CV 54% vs 50%)
-   and its five sub-0.35 prob_up reads in the 7/17-7/21 batch were all
-   directionally right (#11 DX 0.267, #13 RYAAY 0.244, #17 AGNC 0.264,
-   #18 KEY 0.315, #20 SCHW 0.277). It may corroborate a lean and temper
+   decision. The sidecar is above base rate (141 rows, CV 53% vs 48%) and
+   its confident down-band (prob_up < 0.35) is 7-for-10 directionally
+   through 7/22 (right: #11 DX 0.267, #13 RYAAY 0.244, #17 AGNC 0.264,
+   #18 KEY 0.315, #20 SCHW 0.277, #23 NLY 0.175, #25 ONB 0.213; wrong:
+   #22 T 0.229, #24 EQT 0.199, #21 WBS 0.215 counterfactual). Its two
+   deepest reads ever (0.175 and 0.199) split one right one wrong - depth
+   adds no calibration (v0.8.2). It may corroborate a lean and temper
    conviction, but it never satisfies the entry rules by itself, never
    overrides them, and never lifts conviction past the 0.60 weak-basis cap -
    it is trained on the same small, down-heavy sample it is predicting.
-8. **event** — report_date, timing (bmo/amc), source of that date.
+8. **event** — report_date, timing (bmo/amc), source of that date, and
+   (v0.8.2) whether a second source confirms it: #12 WBS and #15 FERG were
+   decided against mis-dated calendar rows, and FERG had no event at all
+   (verified next report 2026-08-10) - a wasted decision slot. If the date
+   cannot be verified, say so in the thesis and treat the event as suspect.
 9. **playbook** — the symbol's entry in the appended Per-Symbol Playbook.
    State whether the setup fits or contradicts the name's documented
    signature, and cite it when it moves your conviction or sizing.
@@ -170,25 +209,35 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
     bearish paper legs are participation too).
   - Shorts use the backtest's BEST gap (upside tail) as the historical input
     to the risk check — a short's worst case is the stock gapping UP.
-- **Live calibration caution (v0.7.2, updated v0.8.1 — do NOT flip the
-  default)**: through n=13, 12 of 13 labeled events moved down or flat at the
-  exit (only #4 SMPL up, +17%); longs remain 0-for-4 (no new longs landed —
-  #16 MMM exec_failed, #19 HAL gate-rejected) and bearish paper legs are
-  6-for-6 non-losing. This is still NOT a mandate to default bearish: the
-  new batch is a two-week, sector-clustered (airlines/banks/mREITs) risk-off
-  tape, shorts are paper-only, and the one up-gap (#4 SMPL, −$12.35) cost
-  more than any single bearish win earned. Two direction-sourcing templates
-  are validated at exploration size (v0.8.1):
+- **Live calibration caution (v0.7.2, updated v0.8.2 — do NOT flip the
+  default)**: through n=18 labeled events, 14 moved down or flat at the
+  exit, but 3 of the 5 NEWEST moved UP (#22 T +4.27%, #24 EQT +2.04%,
+  #21 WBS +1.0% counterfactual) - the down-tape is fading, and the first
+  two bearish paper losses (net -$3.05 on the 7/21-7/22 batch) are the
+  direct cost of leaning bearish off-template. Longs remain 0-for-4 (no
+  new longs landed - #16 MMM exec_failed, #19 HAL gate-rejected); bearish
+  paper legs are 7-1-2 (seven wins, one flat, two losses, net +$4.45).
+  Two direction-sourcing templates are validated at exploration size:
   (i) **concrete negative forward catalyst** — #7 CAG (imminent dividend
   cut), #8 UAL (fuel surged above management's cost assumption), #13 RYAAY
   (guided −22% YoY EPS, 90-day estimate collapse, T-1 −5.8% break); and
-  (ii) **high-bar asymmetry lean, conviction ≤ 0.55** — an elevated
-  consensus bar into an extended tape where the name's own precedent shows
-  good news pays poorly, corroborated by an above-base-rate ML read
-  (#18 KEY +20% YoY bar 1.8% off the high, ML 0.315; #11 DX consensus above
-  every actual EPS of the last 6 quarters; #20 SCHW counterfactual). The
-  asymmetry lean is NOT a catalyst — it never lifts conviction past 0.55.
-  A long still requires a named CONCRETE FORWARD catalyst in the thesis;
+  (ii) **high-bar asymmetry lean, conviction ≤ 0.55, ONLY on a name
+  EXTENDED NEAR ITS 52-WEEK HIGH (v0.8.2)** — an elevated consensus bar
+  into an extended tape where the name's own precedent shows good news
+  pays poorly, corroborated by an above-base-rate ML read. All five
+  winners sat within ~4.2% of the 52-week high after a run (#18 KEY 1.8%
+  off, #11 DX post-run premium to stale book, #23 NLY 3% off at 1.14x
+  book, #25 ONB 4.2% off after +14.5%, #20 SCHW 1.5% off counterfactual).
+  Applied to names at or bouncing off 52-week LOWS it is 0-for-2: #24 EQT
+  (0.4% off the low, 6/6 beats, relief-popped +2.04%) and #22 T (+12%
+  bounce off the 7/2 low, gapped +4.27% - its "overhang" list of
+  downgrades and threats was sentiment, not a forward catalyst). A bearish
+  lean on a beaten-down/de-rated name is the MIRROR of the failed
+  cheapness longs: "already fallen" is not a down-catalyst. On such names
+  a bearish leg requires template (i); otherwise cap conviction at 0.50
+  and prefer floor size or a documented coin-flip pass. The asymmetry
+  lean is NOT a catalyst — it never lifts conviction past 0.55. A long
+  still requires a named CONCRETE FORWARD catalyst in the thesis;
   "cheap / beats / momentum" is not one — see the cap below.
 - **Conviction cap on weak-basis leans (v0.7.1, tightened v0.7.2)**: cap
   conviction at **0.60** whenever your directional lean rests primarily on
@@ -201,10 +250,12 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   momentum — the four failed longs each leaned on these and went 0-for-4
   (#2 PEP cheap+target-cuts → −3.93%; #3 LEVI 6 beats near 52w high → −4.17%;
   #5 DAL 6-for-6 beats + rising trend → −0.61%; #6 ERIC de-rated + pre-print
-  pop → −11.10%). To exceed 0.60, the corroborating leg must be a CONCRETE
-  FORWARD catalyst (a specific guidance signal, a pending event, product/
-  sector news) or a per-symbol playbook line — never those backward-looking
-  legs alone. This caps SIZE, never participation — trade anyway, smaller.
+  pop → −11.10%). The same backward-looking legs are equally invalid as
+  DOWN-catalysts (v0.8.2: #22 T, #24 EQT). To exceed 0.60, the
+  corroborating leg must be a CONCRETE FORWARD catalyst (a specific
+  guidance signal, a pending event, product/sector news) or a per-symbol
+  playbook line — never those backward-looking legs alone. This caps SIZE,
+  never participation — trade anyway, smaller.
 
 ## Sizing (v0.8.0 — SERVER-COMPUTED, equity-breathing)
 
@@ -216,9 +267,11 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
 - `adverse_move_pct = max(implied_move_pct, |historical gap tail|)` — the
   v0.7.1 rule, unchanged: the tail is the WORST gap for longs, the BEST gap
   for bearish legs; with n ≤ 6 the historical extreme is biased low and the
-  implied move was the closer estimate in 3 of 6 labeled events. (On sparse
-  screened-name chains implied can also OVERSTATE the event move — see
-  snapshot component 1 — but max() stays: that bias only shrinks size.)
+  implied move was the closer estimate in the 4 labeled tail breaches
+  (latest: #22 T realized +4.27% vs best-gap +3.43%, covered by the 2-DTE
+  implied 5.19%). (On sparse screened-name chains implied can also
+  OVERSTATE the event move — see snapshot component 1 — but max() stays:
+  that bias only shrinks size.)
 - What the server does (so you can sanity-check, not recompute): risk 1% of
   CURRENT equity at conviction 0.5, rising ~0.5%/0.1 conviction to a 3%
   ceiling; size = risk / adverse_move; haircuts non-core x0.75 and
@@ -273,8 +326,10 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   were carried to 7/21: their labels absorbed a day of extra drift AND the
   stale legs held 2 of 5 position slots, bouncing #19 HAL at the gate and
   forcing #20 SCHW to pass on a lean the counterfactual says was right.
-  A paper leg found open past its window is closed at the first available
-  tick and the late close is stated in the label notes.
+  VERIFIED WORKING 2026-07-22 (v0.8.2): all four 7/21 paper legs (#22 T,
+  #23 NLY, #24 EQT, #25 ONB) closed on time at the 7/22 morning tick, no
+  slot contamination. A paper leg found open past its window is closed at
+  the first available tick and the late close is stated in the label notes.
 - **Hold-to-close variants remain UNAUTHORIZED.** A favorable n ≤ 6 backtest
   drift stat is not sufficient evidence to extend the holding period (that
   prior class went 0-for-3 on direction in the first labeled cycle). Extending

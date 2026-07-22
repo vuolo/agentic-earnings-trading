@@ -1,10 +1,10 @@
-# Per-Symbol Playbook (evidence-based; updated 2026-07-21)
+# Per-Symbol Playbook (evidence-based; updated 2026-07-22)
 
 Per-name signatures from 90 events (6 quarters, daily) + 15 recent events
 (5-min/hourly/AH/premarket), plus labeled live outcomes as they land. These
 are priors, not laws — weigh them in your snapshot and thesis; cite the
 playbook line when it moves your decision.
-Source: reports/research/2026-07-05-* studies; labeled decisions #1-#20.
+Source: reports/research/2026-07-05-* studies; labeled decisions #1-#25.
 
 - **TSM** (bmo, reports ~2am ET): small up-gaps (5/6, +2 to +6%), day-0 drift
   NEGATIVE 6/6, and the fade starts in premarket (Apr: only 4:30–5am beat the
@@ -50,7 +50,7 @@ Cross-cutting (all 90 events): moderate up-gaps (+2–10%) fade day-0 (−2.2 to
 −2.6% avg); moderate down-gaps (5–10%) bounce slightly (+0.7%); giant gaps
 (>10%) are name-specific — use the lines above, not the average.
 
-Cross-cutting (labeled live outcomes, n=13, updated 2026-07-21):
+Cross-cutting (labeled live outcomes, n=18 events, updated 2026-07-22):
 - **An n ≤ 6 backtest gap DIRECTION is a variance estimate, not an edge.** It
   was wrong in 6 of the first 6 labeled events (#2 PEP up_rate 0.67 → down;
   #3 LEVI mean +3.32% → down; #4 SMPL up_rate 0.33 → +17.06% UP; #5 DAL
@@ -61,41 +61,55 @@ Cross-cutting (labeled live outcomes, n=13, updated 2026-07-21):
   and source your DIRECTION from a concrete forward catalyst, guidance,
   sentiment, or a playbook line. Conviction is capped at 0.60 on a
   weak-basis lean (policy v0.7.2).
-- **12 of 13 labeled events moved down or flat at the exit; bearish paper
-  legs are 6-for-6 non-losing** (#7 CAG +$1.91, #8 UAL +$2.30, #11 DX
-  +$0.58, #13 RYAAY +$1.93, #17 AGNC +$0.08, #18 KEY +$0.68; total +$7.49
-  paper). Two validated templates (policy v0.8.1): (i) concrete negative
-  forward catalyst (CAG dividend cut; UAL fuel above the guide assumption;
-  RYAAY guided −22% YoY EPS + T-1 break); (ii) high-bar asymmetry lean at
-  conviction ≤ 0.55 (KEY elevated bar + muted-payoff precedent; DX consensus
-  above every recent actual; SCHW counterfactual). Do NOT default bearish:
-  the batch is a two-week, sector-clustered risk-off tape, shorts are
-  paper-only, and the one up-gap (#4 SMPL −$12.35) cost more than any single
-  bearish win earned.
-- **Longs are 0-for-4; cheapness / beats / momentum are NOT up-catalysts.**
-  Every failed long rested on a backward-looking leg and gapped down: #2 PEP
-  (cheap + target cuts) −3.93%; #3 LEVI (6 beats near 52w high) −4.17%;
-  #5 DAL (6-for-6 beats + rising trend) −0.61%; #6 ERIC (de-rated + pre-print
-  pop) −11.10%. No new longs landed in the 7/17-7/21 batch (#16 MMM
-  exec_failed, #19 HAL gate-rejected on slots). Name the forward catalyst.
-- **The ML sidecar's confident down-reads went 5-for-5** in the 7/17-7/21
-  batch (prob_up: #11 DX 0.267, #13 RYAAY 0.244, #17 AGNC 0.264, #18 KEY
-  0.315, #20 SCHW 0.277 — all resolved down or flat). Above base rate now
-  (CV 54%), but trained on this same down-heavy sample — corroboration only,
-  never a catalyst substitute (policy v0.8.1).
-- **The implied move is the safer SIZING number but overstates screened-name
-  event moves.** Early events breached the historical tail 3 of 6 times with
-  implied closer each time (#4 SMPL implied 16.97% vs realized 17.06%;
-  #6 ERIC realized −11.10% breached the −10.39% worst). But on sparse chains
-  the nearest expiry is a distant monthly and implied runs hot: 7/17-7/21,
-  implied exceeded realized 6-of-6 (#13 RYAAY 10.16% on 35-DTE vs 5.37%;
-  #18 KEY 6.98% vs 1.64%; #17 AGNC 2.97% vs 0.08%). Size against
-  `max(implied, |hist tail|)`; report straddle DTE/strike quality.
-- **The opening auction is the capture, and paper legs must exit there too.**
-  SMPL printed 15.03 in the auction and traded 13.47 by 09:39 ET, −10.4% in
-  nine minutes. #11 DX and #13 RYAAY were closed a day late (7/21 vs the
-  7/20 window): labels absorbed extra drift and the stale legs held 2 of 5
-  slots, bouncing #19 HAL and forcing #20 SCHW to pass (policy v0.8.1).
+- **The high-bar asymmetry lean (template ii) works ONLY near the 52-week
+  HIGH (policy v0.8.2).** All five winners sat within ~4.2% of the high
+  after a run: #18 KEY (1.8% off, −1.64%, +$0.68), #11 DX (post-run premium
+  to stale book, −1.20%, +$0.58), #23 NLY (3% off at 1.14x book, −1.21%,
+  +$1.44), #25 ONB (4.2% off after +14.5%, −1.03%, +$0.28), #20 SCHW
+  (1.5% off, counterfactual −1.10%). Applied to names at or bouncing off
+  52-week LOWS it is 0-for-2: #24 EQT (0.4% off the low, 6/6 beats,
+  relief-popped +2.04%, −$1.77) and #22 T (+12% bounce off the 7/2 low,
+  gapped +4.27%, −$3.00). Bearish into a beaten-down name is the mirror of
+  the failed cheapness longs — "already fallen" is not a down-catalyst; at
+  the lows demand template (i) or cap conviction at 0.50.
+- **Bearish paper legs are 7-1-2 (net +$4.45), and the down-tape is
+  fading.** 14 of 18 labeled events moved down or flat at the exit, but 3
+  of the 5 newest were UP (#22 T +4.27%, #24 EQT +2.04%, #21 WBS +1.0%
+  counterfactual). Do NOT default bearish: the first two bearish losses
+  cost −$4.77 in one batch, and template discipline (location + catalyst),
+  not direction, is what separated them from the same-day winners.
+- **Longs are 0-for-4; cheapness / beats / momentum are NOT catalysts in
+  EITHER direction.** Every failed long rested on a backward-looking leg
+  and gapped down: #2 PEP (cheap + target cuts) −3.93%; #3 LEVI (6 beats
+  near 52w high) −4.17%; #5 DAL (6-for-6 beats + rising trend) −0.61%;
+  #6 ERIC (de-rated + pre-print pop) −11.10%. The bearish mirrors (#22 T,
+  #24 EQT) leaned on de-rated tape/overhang sentiment and lost. Name the
+  forward catalyst.
+- **The ML sidecar's confident down-band (prob_up < 0.35) is 7-for-10, and
+  depth adds no calibration.** Right: #11 DX 0.267, #13 RYAAY 0.244,
+  #17 AGNC 0.264, #18 KEY 0.315, #20 SCHW 0.277, #23 NLY 0.175, #25 ONB
+  0.213. Wrong: #22 T 0.229, #24 EQT 0.199, #21 WBS 0.215 (counterfactual).
+  Its two deepest reads ever (0.175, 0.199) split one right one wrong.
+  Corroboration only, never a catalyst substitute (policy v0.8.2).
+- **The implied move is the safer SIZING number; chain quality decides how
+  literally to read it.** Realized breached the historical tail in 4 events
+  with implied closer each time (#4 SMPL 16.97% implied vs 17.06%; #6 ERIC
+  −11.10% vs worst −10.39%; #22 T +4.27% vs best +3.43%, covered by the
+  2-DTE implied 5.19%). Short-DTE weeklies are trustworthy (#22 T 5.19 vs
+  4.27; #24 EQT 4.2 vs 2.04; #23 NLY 2.45 vs 1.21); distant monthlies run
+  hot (#13 RYAAY 10.16% on 35-DTE vs 5.37%; #18 KEY 6.98% vs 1.64%;
+  #25 ONB 10.8% on 30-DTE vs 1.03%). Size against `max(implied, |tail|)`;
+  report straddle DTE/strike quality.
+- **The opening auction is the capture, and paper legs must exit there
+  too.** SMPL printed 15.03 in the auction and traded 13.47 by 09:39 ET,
+  −10.4% in nine minutes. #11 DX and #13 RYAAY were closed a day late,
+  contaminating labels and bouncing #19 HAL / forcing #20 SCHW to pass.
+  The v0.8.1 fix is VERIFIED: all four 7/21 legs (#22, #23, #24, #25)
+  closed on time at the 7/22 auction window, no slot contamination.
+- **Verify the report date.** #12 WBS and #15 FERG were decided against
+  mis-dated calendar rows; FERG had no event at all (next report 8/10) —
+  a wasted decision slot. State the date source and a second-source check
+  in the event component (policy v0.8.2).
 
 ## Screened candidates (backtest priors; realized outcomes noted)
 
@@ -165,12 +179,48 @@ Realized (labeled outcomes):
   consensus bar 1.8% off the high, precedent of good news paying poorly
   (Q1's 33% beat closed +0.6%), ML 0.315 — conviction correctly held at 0.50
   under the weak-basis cap. Validated as a direction source at ≤ 0.55
-  (policy v0.8.1).
+  (policy v0.8.1); location requirement added v0.8.2 (near the high only).
 - **SCHW** (bmo 7/21) — **forced pass (#20, slots full), counterfactual
   −1.10%**: the stated bearish asymmetry lean (telegraphed strong quarter
   fully priced at −1.5% off the 52w high, ML 0.277) would have won ~1%. The
   pass was correct procedure (disqualifier d) but the cost was real — slot
   hygiene (stale paper legs) is what consumed the capacity.
+- **T** (bmo 7/22) — **traded bearish paper, WRONG, gap +4.27%** (#22,
+  −$3.00, first bearish loss). Labeled template ii but the location was
+  wrong: T was a +12% three-week bounce off its 7/2 52-week LOW, not
+  extended at a high, and the "overhang" stack (Starlink threat, downgrade,
+  CFO exit) was sentiment, not a forward catalyst. Realized +4.27% breached
+  the best historical gap +3.43% (4th tail breach); the 2-DTE weekly
+  implied 5.19% covered it. Post-open drift is up 6/6 in T — the auction
+  exit remains the right capture even when wrong.
+- **EQT** (amc 7/21) — **traded bearish paper, WRONG, gap +2.04%** (#24,
+  −$1.77). Bearish into a name 0.4% off its 52-week low with a 6-of-6 beat
+  record — the thesis itself named the relief-pop risk and it happened.
+  The gas-price/EBITDA-model lean was analyst-consensus texture, not a
+  CAG-grade catalyst. Confirms: de-rated names at the lows need template
+  (i) or a 0.50 cap on any bearish lean (policy v0.8.2). Clean 3-DTE
+  weekly implied 4.2% vs 2.04% realized.
+- **NLY** (amc 7/21) — **traded bearish paper, RIGHT, −1.21%** (#23,
+  +$1.44). Textbook template ii at the right location: 3% off the 52w high
+  at 1.14x stale book, $0.75 dividend covered by only $0.76 EAD, ML 0.175
+  (its most confident read yet). mREIT gaps stay small but NLY's was 
+  large enough to pay above floor size; conviction correctly held at 0.50.
+- **ONB** (bmo 7/22) — **traded bearish paper, RIGHT, −1.03%** (#25,
+  +$0.28). Template ii: +19% YoY bar with slowing revenue, 4.2% off the
+  high after +14.5%, prior beat paid only +0.4%, ML 0.213 — and it
+  correctly overrode ONB's up-biased gap history (5/6 up, mean +1.39%).
+  Chain junk (30-DTE monthly, zero-OI put): implied 10.8% vs 1.03%
+  realized, treat as upper bound only.
+- **WBS** (amc 7/21) — **passed twice, RIGHT, +1.0%** (#12, #21). Merger
+  math pins the price ($48.75 cash + 2.0548 SAN ADS, ~0.9% arb discount,
+  no earnings call): the print cannot move consideration, so the event is
+  structurally neutered — a documented true coin-flip pass is correct
+  until the deal closes or the spread blows out (which WOULD be a concrete
+  catalyst). #12 was decided against a mis-dated calendar row (7/17 vs the
+  real 7/21 amc).
+- **FERG** — **pass on date-integrity, RIGHT** (#15): the 7/21 calendar row
+  was false; verified next report 2026-08-10 (calendar still shows phantom
+  7/28 and 7/31 rows). Do not decide FERG until the date verifies.
 
 Backtest priors (no labeled trade yet):
 

@@ -209,10 +209,14 @@ def _model_chain(primary: str) -> list[str]:
     return chain
 
 
-def _run_capturing(cmd: list[str], *, timeout: int) -> tuple[int, str]:
-    """Run cmd, tee its combined output live to our stdout, and also return it
-    so the caller can inspect for the usage-limit signature. Hard-kills at
-    `timeout` (returns 124), matching the launchd per-run cap."""
+_PRINT_LOCK = threading.Lock()  # atomic per-run output blocks under parallel runs
+
+
+def _run_capturing(cmd: list[str], *, timeout: int, tee: bool = True) -> tuple[int, str]:
+    """Run cmd, tee its combined output live to our stdout (unless tee=False),
+    and also return it so the caller can inspect for the usage-limit
+    signature. Hard-kills at `timeout` (returns 124), matching the launchd
+    per-run cap."""
     proc = subprocess.Popen(
         cmd, cwd=str(REPO_ROOT), text=True, bufsize=1,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -222,8 +226,9 @@ def _run_capturing(cmd: list[str], *, timeout: int) -> tuple[int, str]:
     def _pump() -> None:
         assert proc.stdout is not None
         for line in proc.stdout:
-            sys.stdout.write(line)
-            sys.stdout.flush()
+            if tee:
+                sys.stdout.write(line)
+                sys.stdout.flush()
             buf.append(line)
 
     pump = threading.Thread(target=_pump, daemon=True)
@@ -240,7 +245,29 @@ def _run_capturing(cmd: list[str], *, timeout: int) -> tuple[int, str]:
 
 
 def run_role(role_name: str, *, symbol: str | None = None,
-             model: str | None = None) -> int:
+             model: str | None = None, quiet: bool = False) -> int:
+    """quiet=True buffers the run's entire output and prints it as one atomic
+    block on completion — required when runs execute in parallel (afternoon
+    analysts), where live-teed lines from 4 agents interleave unreadably."""
+    log: list[str] = []
+
+    def emit(s: str, *, err: bool = False) -> None:
+        if quiet:
+            log.append(s)
+        else:
+            print(s, file=sys.stderr if err else sys.stdout)
+
+    try:
+        return _run_role_inner(role_name, symbol=symbol, model=model,
+                               quiet=quiet, emit=emit)
+    finally:
+        if quiet and log:
+            with _PRINT_LOCK:
+                sys.stdout.write("\n".join(log).rstrip() + "\n")
+                sys.stdout.flush()
+
+
+def _run_role_inner(role_name: str, *, symbol, model, quiet, emit) -> int:
     if shutil.which("claude") is None:
         print("error: `claude` CLI not found on PATH.", file=sys.stderr)
         return 127
@@ -278,21 +305,23 @@ def run_role(role_name: str, *, symbol: str | None = None,
                 "--append-system-prompt", mission,
                 "--allowedTools", *allowed,
             ]
-            print(f"launching {role_name} (model={active}, policy v{version}"
-                  + (f", symbol={symbol}" if symbol else "") + ")\n")
+            emit(f"launching {role_name} (model={active}, policy v{version}"
+                 + (f", symbol={symbol}" if symbol else "") + ")\n")
             # Hard cap per agent run: launchd drops a fire while the same label
             # is still running, so a hung 16:20 run would silently eat the 16:50
             # disaster-valve run. 22 minutes guarantees the next fire always
             # gets its slot. A killed run is safe: queued/placed orders live at
             # the broker and the next run reconciles via get_equity_orders.
-            rc, out = _run_capturing(cmd, timeout=1320)
+            rc, out = _run_capturing(cmd, timeout=1320, tee=not quiet)
+            if quiet:
+                emit(out.rstrip())
             if rc == 124:
-                print(f"error: {role_name} run exceeded 22min and was killed — "
-                      "next tick will reconcile", file=sys.stderr)
+                emit(f"error: {role_name} run exceeded 22min and was killed — "
+                     "next tick will reconcile", err=True)
                 return 124
             if rc != 0 and _USAGE_LIMIT_RE.search(out) and i + 1 < len(chain):
-                print(f"notice: {active} usage-limited — falling back to "
-                      f"{chain[i + 1]} for {role_name}", file=sys.stderr)
+                emit(f"notice: {active} usage-limited — falling back to "
+                     f"{chain[i + 1]} for {role_name}", err=True)
                 continue
             return rc
         return rc  # all models usage-limited; return the last rc (non-zero)

@@ -64,6 +64,30 @@ def test_resolve_phase():
     assert resolve_phase(datetime(2026, 7, 15, 16, 50)) == "evening"
 
 
+def test_entry_window_gates_late_and_early_fires():
+    # A wake-from-sleep replay at 12:30 or 16:10 must never run the entry
+    # pipeline (9-day live outage root cause: post-close execution attempts).
+    from datetime import time
+    from orchestrator.daily import in_entry_window
+    assert in_entry_window(time(15, 30))
+    assert in_entry_window(time(15, 25))
+    assert in_entry_window(time(15, 57, 59))
+    assert not in_entry_window(time(15, 58))
+    assert not in_entry_window(time(12, 30))
+    assert not in_entry_window(time(16, 10))
+    assert not in_entry_window(time(9, 24))
+
+
+def test_entry_clock_ordering():
+    # The dispatch deadlines must stay coherent: analysts stop starting
+    # before the executor's last launch, which precedes the window close.
+    from orchestrator import daily
+    assert (daily.ENTRY_PIPELINE_OPEN < daily.BACKFILL_CUTOFF
+            < daily.EXEC_NOT_BEFORE < daily.EXEC_VALVE
+            <= daily.ANALYST_START_CUTOFF < daily.EXEC_LAST_LAUNCH
+            < daily.ENTRY_PIPELINE_CLOSE)
+
+
 @pytest.fixture()
 def store(tmp_path: Path):
     s = Store(tmp_path / "t.sqlite3")

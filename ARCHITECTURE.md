@@ -508,3 +508,31 @@ Keep this section honest — dated entries only, from real runs.
   beta, and down-gap events get strictly worse held to T+3. No policy
   change; loser-side AH exit remains the only parked hypothesis. See
   reports/research/2026-07-16-exit-horizon-study.md.
+- **2026-07-22** - **9-day live-entry outage found and fixed** (last live
+  fill ERIC 2026-07-13). Three verified causes, from the decisions table
+  and executor exec_detail: (1) the afternoon tick ran analysts
+  SEQUENTIALLY (~5 min each, up to 6) and dispatched the executor once at
+  the end, ~16:05-16:09 ET - past the close, so every long_equity since
+  07-14 ended exec_failed ("entry window missed", decisions #16 MMM, #26
+  ACI, #27 PNFP); with shorting disabled, bearish_option legs are paper,
+  so long_equity was the ONLY live path. (2) $0-capital paper legs counted
+  against max_open_positions and the daily budget - #19 HAL rejected "max
+  open positions (5) reached" with every slot a paper leg. (3) No reboot
+  resilience: caffeinate only anchored at 06:57, so a mid-day restart
+  meant 1-minute idle sleep and silently missed fires. Fixes, all
+  test-covered (89 passing) and validated per the defanged-launchd
+  procedure: afternoon fire moved 15:40 -> 15:30; analysts run in a
+  4-worker pool with per-run landed-decision evidence (the global
+  gateway_last_boot stamp races under parallelism); deadline-aware
+  executor dispatch (never before 15:43, valve at 15:50 if analysts lag,
+  last launch 15:54, disjoint kickoff ID lists so concurrent sweeps can
+  never double-order); same-day expiry of unexecuted pendings; entry
+  pipeline hard-gated to 15:25-15:58 so wake-replay/catch-up fires cannot
+  enter off-window; risk gate counts only live-routed capital
+  (pending_live/open_live) against live caps while paper mode still
+  simulates caps faithfully; RunAtLoad on both agents (every phase proven
+  re-fire-safe) and the caffeinate wrapper re-asserts wakefulness until
+  17:15 from any boot/login; SQLite busy_timeout 5s for the parallel
+  writers. Validation: defanged evening --dry-run fired twice clean under
+  real launchd (RunAtLoad + kickstart, empty stderr), then a REAL
+  RunAtLoad evening fire exited 0 with the correct no-op.

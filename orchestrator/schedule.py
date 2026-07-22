@@ -57,9 +57,12 @@ def _path_env() -> str:
 # Market-phase fire times (local = ET). Morning fires at 9:24 so exit orders
 # are placed BEFORE 9:30 and fill IN the opening auction — the exact
 # `post_open` print every backtest measures (no pipeline latency, no
-# first-minutes drift). Afternoon entries land just before the close; the
-# evening fires are the (default-off) AMC after-hours path.
-FIRE_TIMES = ((9, 24), (15, 40), (16, 20), (16, 50))
+# first-minutes drift). Afternoon fires at 15:30 (moved from 15:40,
+# 2026-07-22): parallel analysts need ~12 min, then the executor must PLACE
+# orders inside the 15:45-15:58 policy window — the 15:40 start put the
+# executor past the close on every multi-event day. The evening fires are
+# the exit-queue + disaster-valve path.
+FIRE_TIMES = ((9, 24), (15, 30), (16, 20), (16, 50))
 
 
 def _plist(model: str) -> dict:
@@ -71,7 +74,12 @@ def _plist(model: str) -> dict:
         "WorkingDirectory": str(REPO_ROOT),
         "EnvironmentVariables": {"PATH": _path_env()},
         "StartCalendarInterval": [{"Hour": h, "Minute": m} for h, m in FIRE_TIMES],
-        "RunAtLoad": False,
+        # Reboot/login catch-up: launchd replays a missed calendar fire after
+        # WAKE-from-sleep, but a fire missed across a REBOOT is gone forever.
+        # RunAtLoad runs one tick at login; every phase is re-fire-safe
+        # (morning verify-only guard, afternoon window guard, idempotent
+        # evening verification), so the catch-up can never double-trade.
+        "RunAtLoad": True,
         "StandardOutPath": str(LOGS / "launchd_stdout.log"),
         "StandardErrorPath": str(LOGS / "launchd_stderr.log"),
         "LimitLoadToSessionType": "Aqua",
@@ -88,23 +96,37 @@ def _plist(model: str) -> dict:
     }
 
 
+# Caffeinate wrapper: assert wakefulness only until 17:15 on weekdays, however
+# the job was triggered. bash (not sh) for the 10# radix prefix — date +%H
+# yields zero-padded "09", which $(( )) would otherwise parse as bad octal.
+_CAF_SCRIPT = (
+    '[ "$(date +%u)" -le 5 ] || exit 0; '
+    'now=$((10#$(date +%H)*3600 + 10#$(date +%M)*60)); '
+    "end=$((17*3600 + 15*60)); "
+    '[ "$now" -lt "$end" ] || exit 0; '
+    "exec /usr/bin/caffeinate -i -t $((end - now))"
+)
+
+
 def _caffeinate_plist() -> dict:
     """Hold the system awake through market hours. The operator's Mac sleeps
     after 1 idle minute; the only guaranteed-awake moment is the system
     wakepoweron (currently **06:55**, moved from 07:55 on 2026-07-06 — owned
     by the operator's other schedule; re-anchor here if it moves again).
     Firing at 06:57 + a 06:58 backup rides the immediate post-wake window;
-    `caffeinate -i -t 37000` then blocks idle sleep until ~17:14, covering
-    all four ticks. Duplicate fires just stack assertions — harmless.
-    No sudo needed; weekdays only."""
+    the wrapper blocks idle sleep until 17:15, covering all four ticks.
+    RunAtLoad re-establishes the assertion after any reboot or login during
+    market hours — before it, a mid-day restart meant 1-minute idle sleep and
+    missed fires until the next 06:57. Duplicate fires just stack assertions —
+    harmless. No sudo needed; weekdays only."""
     return {
         "Label": CAF_LABEL,
-        "ProgramArguments": ["/usr/bin/caffeinate", "-i", "-t", "37000"],
+        "ProgramArguments": ["/bin/bash", "-c", _CAF_SCRIPT],
         "StartCalendarInterval": [
             {"Weekday": wd, "Hour": 6, "Minute": m}
             for wd in range(1, 6) for m in (57, 58)
         ],
-        "RunAtLoad": False,
+        "RunAtLoad": True,
         "LimitLoadToSessionType": "Aqua",
     }
 
@@ -135,7 +157,8 @@ def install(model: str) -> int:
         print(f"installed {LABEL}: fires daily at {times} local "
               f"(model={model})\nplist: {PLIST_PATH}\nlogs:  {LOGS}/launchd_*.log")
         print("installed com.earnings.caffeinate: weekdays 06:57 + 06:58 "
-              "backup, holds the system awake ~10.3h (rides the 06:55 wake)"
+              "backup + RunAtLoad (reboot-proof), holds the system awake "
+              "until 17:15 (rides the 06:55 wake)"
               if caf_rc == 0 else
               f"warning: caffeinate agent failed to load (rc={caf_rc})")
         print("note: keep the Mac plugged in + logged in during market hours; "

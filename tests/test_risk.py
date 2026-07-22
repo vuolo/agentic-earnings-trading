@@ -125,3 +125,64 @@ def test_rejects_live_mode_when_disarmed(setup, tmp_path, monkeypatch):
 def test_rejects_bad_conviction(setup):
     _, _, gate = setup
     assert not gate.evaluate(req(conviction=1.5)).approved
+
+
+def _armed_live_gate(setup, monkeypatch):
+    """Live-mode gate with a faked active arm (caps match the test limits)."""
+    from engine import arming
+    cfg, store, _ = setup
+    fake = arming.Arm(per_position_cap_usd=1_000.0, daily_cap_usd=2_500.0,
+                      expires="2999-01-01", armed_at="2026-01-01T00:00:00")
+    monkeypatch.setattr(arming, "arm_status", lambda: (fake, ""))
+    live_cfg = Config(mode="live", db_path=cfg.db_path, universe=cfg.universe,
+                      limits=cfg.limits)
+    return store, RiskGate(live_cfg, store)
+
+
+def test_live_entry_not_starved_by_paper_legs(setup, monkeypatch):
+    # Proven live 2026-07-20 (HAL): $0-capital paper dataset legs filled every
+    # open-position slot and the daily budget, rejecting an armed live long.
+    store, gate = _armed_live_gate(setup, monkeypatch)
+    for sym in ("NVDA", "AMD"):  # max_open_positions=2, all paper
+        store.insert_decision(
+            symbol=sym, action="bearish_option", policy_version="t",
+            risk_verdict="approved", status="open_paper",
+            size_usd=1_000.0, entry_price=100.0)
+    verdict = gate.evaluate(req(symbol="MU"))
+    assert verdict.approved, verdict.reasons
+
+
+def test_live_caps_still_bind_on_live_positions(setup, monkeypatch):
+    store, gate = _armed_live_gate(setup, monkeypatch)
+    for sym, status in (("NVDA", "pending_live"), ("AMD", "open_live")):
+        store.insert_decision(
+            symbol=sym, action="long_equity", policy_version="t",
+            risk_verdict="approved", status=status,
+            size_usd=500.0, entry_price=100.0)
+    verdict = gate.evaluate(req(symbol="MU"))
+    assert not verdict.approved
+    assert any("max open positions" in r for r in verdict.reasons)
+
+
+def test_live_daily_budget_ignores_paper_but_counts_live(setup, monkeypatch):
+    store, gate = _armed_live_gate(setup, monkeypatch)
+    store.insert_decision(  # paper leg: must not consume the live budget
+        symbol="NVDA", action="bearish_option", policy_version="t",
+        risk_verdict="approved", status="open_paper",
+        size_usd=2_400.0, entry_price=100.0)
+    assert gate.evaluate(req(symbol="MU", size=1_000.0)).approved
+    store.insert_decision(  # live entry today: does consume it
+        symbol="AMD", action="long_equity", policy_version="t",
+        risk_verdict="approved", status="open_live",
+        size_usd=2_000.0, entry_price=100.0)
+    verdict = gate.evaluate(req(symbol="MU", size=1_000.0))
+    assert not verdict.approved
+    assert any("daily new-exposure budget" in r for r in verdict.reasons)
+
+
+def test_paper_mode_still_counts_everything(setup):
+    # Paper mode simulates the caps faithfully: paper legs fill slots.
+    _, store, gate = setup
+    _open_position(store, "NVDA")
+    _open_position(store, "AMD")
+    assert not gate.evaluate(req(symbol="MU")).approved

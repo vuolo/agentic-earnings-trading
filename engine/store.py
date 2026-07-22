@@ -100,6 +100,12 @@ CREATE TABLE IF NOT EXISTS backtests (
 
 # Exposure counts everything that consumed (or is consuming) capital budget.
 _BUDGET_STATUSES = "('open_paper', 'closed_paper', 'pending_live', 'open_live', 'closed_live')"
+# Live-routed subsets: only these consume REAL capital. Paper dataset legs
+# (bearish_option while shorting is disabled) must not starve live caps —
+# proven live 2026-07-20: HAL long_equity rejected on "max open positions"
+# while every slot was a $0-capital paper leg.
+_LIVE_OPEN_STATUSES = "('pending_live', 'open_live')"
+_LIVE_BUDGET_STATUSES = "('pending_live', 'open_live', 'closed_live')"
 
 # An event has "reacted" once its report is in the past — including a bmo
 # report on the morning of `today` (it landed before the open, so the market
@@ -122,6 +128,9 @@ class Store:
         self._db = sqlite3.connect(str(self.db_path))
         self._db.row_factory = sqlite3.Row
         self._db.execute("PRAGMA journal_mode=WAL")
+        # Afternoon analysts run in parallel (4 gateway processes writing):
+        # wait out a writer instead of surfacing SQLITE_BUSY to an agent tool.
+        self._db.execute("PRAGMA busy_timeout=5000")
         self._migrate_v1_decisions()
         self._db.executescript(_SCHEMA)
         cols = [r[1] for r in self._db.execute("PRAGMA table_info(events)")]
@@ -280,11 +289,13 @@ class Store:
             "SELECT * FROM decisions WHERE id = ?", (decision_id,)
         ).fetchone()
 
-    def open_positions(self) -> list[sqlite3.Row]:
+    def open_positions(self, *, live_only: bool = False) -> list[sqlite3.Row]:
+        statuses = _LIVE_OPEN_STATUSES if live_only \
+            else "('open_paper', 'pending_live', 'open_live')"
         return self._db.execute(
-            """SELECT * FROM decisions
-               WHERE status IN ('open_paper', 'pending_live', 'open_live')
-               ORDER BY created_at"""
+            f"""SELECT * FROM decisions
+                WHERE status IN {statuses}
+                ORDER BY created_at"""
         ).fetchall()
 
     def open_position_for(self, symbol: str) -> sqlite3.Row | None:
@@ -295,10 +306,11 @@ class Store:
             (symbol.strip().upper(),),
         ).fetchone()
 
-    def today_new_exposure(self) -> float:
+    def today_new_exposure(self, *, live_only: bool = False) -> float:
+        statuses = _LIVE_BUDGET_STATUSES if live_only else _BUDGET_STATUSES
         row = self._db.execute(
             f"""SELECT COALESCE(SUM(size_usd), 0) AS total FROM decisions
-                WHERE status IN {_BUDGET_STATUSES}
+                WHERE status IN {statuses}
                   AND substr(created_at, 1, 10) = ?""",
             (_today(),),
         ).fetchone()

@@ -104,10 +104,18 @@ class RiskGate:
 
         if self.store.open_position_for(symbol) is not None:
             reasons.append(f"an open paper position already exists for {symbol}")
-        if len(self.store.open_positions()) >= limits.max_open_positions:
+
+        # Live-routed actions (what the gateway sends to the executor in live
+        # mode) are capped against LIVE capital only: $0-capital paper dataset
+        # legs (bearish_option while shorting is disabled) must not starve the
+        # live position/budget caps. Paper submissions still count everything,
+        # so paper mode simulates the caps faithfully.
+        live_routed = self.cfg.mode == "live" and req.action in (
+            "long_equity", "short_equity")
+        if len(self.store.open_positions(live_only=live_routed)) >= limits.max_open_positions:
             reasons.append(f"max open positions ({limits.max_open_positions}) reached")
 
-        used = self.store.today_new_exposure()
+        used = self.store.today_new_exposure(live_only=live_routed)
         if req.size_usd > 0 and used + req.size_usd > daily_cap:
             reasons.append(
                 f"daily new-exposure budget exceeded: ${used:,.2f} used + "

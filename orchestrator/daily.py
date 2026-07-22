@@ -6,11 +6,16 @@ needed. launchd fires three times per trading day (orchestrator/schedule.py):
     09:24 ET  morning    executor FIRST (exit orders placed pre-open, filling
                          in the 9:30 opening auction) · monitor · scout ·
                          labeler (paper closes + pass labels) · strategist
-    15:40 ET  afternoon  analyst (events in the decision window) ·
-                         executor (entries land ~15:45-15:58, just before close)
+    15:30 ET  afternoon  analysts in PARALLEL (x4, deadline-aware) · executor
+                         dispatched so orders PLACE inside 15:45-15:58
     16:50 ET  evening    executor (same-day after-hours AMC exits — only when
                          the PDT budget allows; otherwise positions ride to
                          the next open)
+
+Every phase is safe to re-fire (wake-from-sleep replays, RunAtLoad catch-up
+after a reboot/login): morning is verify-only once completed, afternoon
+refuses to run outside its 15:25-15:58 window, evening re-verifies queued
+exits idempotently.
 
     python -m orchestrator.daily [--phase morning|afternoon|evening|auto] [--dry-run]
 """
@@ -18,9 +23,12 @@ needed. launchd fires three times per trading day (orchestrator/schedule.py):
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import json
 import os
-from datetime import date, datetime, timedelta, timezone
+import threading
+import time as time_mod
+from datetime import date, datetime, time as dtime, timedelta, timezone
 from pathlib import Path
 
 from engine.arming import arm_status
@@ -30,6 +38,24 @@ from engine.store import Store
 from . import launcher
 
 STRATEGIST_MIN_NEW_OUTCOMES = 3
+
+# Afternoon entry clock (local wall clock = ET on this host). The window is
+# hard: orders must be PLACED inside the policy's 15:45-15:58 entry window.
+# Sequential analyst runs (~5 min each) put the executor at ~16:05-16:09 on
+# every multi-event day — 9 straight days of exec_failed live entries,
+# 2026-07-13..07-22 — hence parallel analysts + deadline-aware dispatch.
+ANALYST_WORKERS = 4
+ENTRY_PIPELINE_OPEN = dtime(15, 25)    # entry pipeline runs only inside
+ENTRY_PIPELINE_CLOSE = dtime(15, 58)   # [OPEN, CLOSE) — late wake-refire skips
+BACKFILL_CUTOFF = dtime(15, 38)        # a backtester run later than this eats the window
+ANALYST_START_CUTOFF = dtime(15, 50)   # an analyst STARTING later can't land in time
+EXEC_NOT_BEFORE = dtime(15, 43)        # boot+quote ≈ 2 min → first order ~15:45
+EXEC_VALVE = dtime(15, 50)             # dispatch what's pending even if analysts lag
+EXEC_LAST_LAUNCH = dtime(15, 54)       # launched later, orders can't beat 15:58
+
+
+def in_entry_window(now_t: dtime) -> bool:
+    return ENTRY_PIPELINE_OPEN <= now_t < ENTRY_PIPELINE_CLOSE
 
 # NYSE full-close holidays 2026. Half days (2026-11-27, 2026-12-24) close at
 # 13:00 — our 15:40 entry window doesn't exist, so treat them as non-entry too.
@@ -154,6 +180,34 @@ def _run_with_evidence(store: Store, role: str, *, symbol: str | None = None,
     return rc
 
 
+def _analyst_job(db_path, event_id: int, symbol: str, model: str | None) -> tuple[int, bool]:
+    """One analyst run in a worker thread, with per-run landed-decision
+    evidence: the global gateway_last_boot stamp _run_with_evidence uses is
+    racy under parallel runs (any sibling's gateway boot would mask this
+    run's failure), so the evidence here is a decision row for THIS event
+    created after the run started. No row ⇒ retry once (window permitting).
+    Opens its own Store — sqlite connections are not shareable across
+    threads. Returns (exit code, decision landed)."""
+    if datetime.now().time() >= ANALYST_START_CUTOFF:
+        return -1, False  # too late to start: could not land before the close
+    for attempt in (1, 2):
+        start = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        rc = launcher.run_role("analyst", symbol=symbol, model=model, quiet=True)
+        s = Store(db_path)
+        try:
+            landed = any((d["created_at"] or "") >= start
+                         for d in s.decisions_for_event(event_id))
+        finally:
+            s.close()
+        if landed:
+            return rc, True
+        if attempt == 1 and datetime.now().time() < ANALYST_START_CUTOFF:
+            print(f"analyst({symbol}): NO decision landed (exit {rc}) — retrying once")
+            continue
+        return rc, False
+    return rc, False
+
+
 def _write_briefing(cfg: Config, store: Store) -> None:
     """Regenerate the operator briefing and commit it (best-effort)."""
     import subprocess
@@ -224,6 +278,13 @@ def _notify(text: str) -> None:
 def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm_why):
     if True:  # keep original indentation depth for the phase blocks below
         if phase == "morning":
+            # RunAtLoad catch-up fires (reboot/login) can arrive at any hour;
+            # a middle-of-the-night morning pass would label outcomes on stale
+            # quotes. Anything 07:00+ is fine (exits placed pre-open fill in
+            # the same 9:30 auction as the 9:24 fire's would).
+            if not dry_run and datetime.now().hour < 7:
+                print("morning: before 07:00 — deferring to the scheduled fire")
+                return
             if (not dry_run and
                     store.meta_get("tick_morning_last", "")[:10] == today.isoformat()):
                 # Backup/re-fires are cheap: today's morning work is done —
@@ -330,6 +391,17 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
             if not is_trading_day(today, full_session=True):
                 print("market closed (weekend/holiday/half-day) — no entries; done")
                 return
+            # Window guard: the entry pipeline only makes sense just before
+            # the close. A late fire (wake-from-sleep replay, RunAtLoad
+            # catch-up after a reboot/login) must not analyze at 12:30 or
+            # enter at 16:10. Dry runs bypass so the plan can be previewed.
+            now_t = datetime.now().time()
+            if not dry_run and not in_entry_window(now_t):
+                print(f"afternoon: {now_t.strftime('%H:%M')} is outside the "
+                      f"entry window {ENTRY_PIPELINE_OPEN.strftime('%H:%M')}-"
+                      f"{ENTRY_PIPELINE_CLOSE.strftime('%H:%M')} ET (late "
+                      "wake or catch-up fire) — no entries possible; done")
+                return
             # Candidate selection (market-wide): core names always; non-core
             # only if screened-in. Core first, then by historical mean |gap|
             # (edge_rank — volume only breaks ties). Hard cap on analyst runs
@@ -359,21 +431,26 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                        and store.backtest_summary(e["symbol"])["events"] == 0]
             if need_bt:
                 syms = ", ".join(sorted(set(need_bt)))
-                print(f"backtester: backfilling new names first — {syms}")
-                if not dry_run:
-                    print(f"backtester exit {_run_with_evidence(store, 'backtester', symbol=syms, model=model)}")
+                if datetime.now().time() >= BACKFILL_CUTOFF and not dry_run:
+                    # A backtester run here (up to 22 min) would eat the entry
+                    # window. Un-backfilled names rank at edge 0 anyway; the
+                    # morning tick refreshes history for realized events.
+                    print(f"backtester: SKIPPED (past "
+                          f"{BACKFILL_CUTOFF.strftime('%H:%M')} — window "
+                          f"priority) — {syms}")
+                else:
+                    print(f"backtester: backfilling new names first — {syms}")
+                    if not dry_run:
+                        print(f"backtester exit {_run_with_evidence(store, 'backtester', symbol=syms, model=model)}")
 
-            ran = 0
+            jobs = []
             for *_, e in due:
                 if _skip_reanalysis(store, e, cfg.policy_version):
                     print(f"analyst: {e['symbol']} {e['report_date']} already decided — skip")
                     continue
-                ran += 1
+                jobs.append(e)
                 print(f"analyst: {e['symbol']} {e['report_date']} ({e['timing']}) is due")
-                if not dry_run:
-                    rc = _run_with_evidence(store, "analyst", symbol=e["symbol"], model=model)
-                    print(f"analyst({e['symbol']}) exit {rc}")
-            if ran == 0:
+            if not jobs:
                 print("analyst: no events in the decision window")
 
             # Stale-pending guard: a pending_live decision from a PRIOR day
@@ -391,20 +468,118 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                     )
                     print(f"expired stale pending #{r['id']} {r['symbol']} "
                           f"(created {r['created_at'][:10]})")
-            pending = store.pending_executions()
-            if pending and arm:
+
+            if dry_run:
+                if jobs:
+                    print(f"analyst: would run {len(jobs)} in parallel "
+                          f"(x{ANALYST_WORKERS}): "
+                          + ", ".join(e["symbol"] for e in jobs))
+                pending = store.pending_executions()
+                if pending and arm:
+                    print("executor: would dispatch "
+                          + ", ".join(f"#{r['id']} {r['symbol']}" for r in pending))
+                elif pending:
+                    print(f"executor: {len(pending)} pending buy(s) but "
+                          f"{arm_why} — nothing would execute")
+                else:
+                    print("executor: no entries pending")
+                return
+
+            # PARALLEL analysts + deadline-aware executor dispatch. Decisions
+            # stream into pending_executions as analysts finish; the executor
+            # is dispatched with everything undispatched once analysts are
+            # done (or at the 15:50 valve if they lag), never before 15:43,
+            # never after 15:54. Disjoint kickoff ID lists keep concurrent
+            # executor sweeps from ever double-ordering a decision (the
+            # executor hard-rule: only kickoff-named jobs).
+            dispatched: set[int] = set()
+            exec_threads: list[threading.Thread] = []
+
+            def _undispatched():
+                return [r for r in store.pending_executions()
+                        if r["id"] not in dispatched]
+
+            def _try_dispatch():
+                if not arm:
+                    return
+                now = datetime.now().time()
+                if not (EXEC_NOT_BEFORE <= now <= EXEC_LAST_LAUNCH):
+                    return
+                rows = _undispatched()
+                if not rows:
+                    return
+                dispatched.update(r["id"] for r in rows)
                 job = ("open positions before the close — buy for long_equity, "
                        "sell-short for short_equity (decision_id symbol action "
                        "$size @ref): "
                        + ", ".join(f"#{r['id']} {r['symbol']} {r['action']} "
                                    f"${r['size_usd']:,.0f} @{r['entry_price']}"
-                                   for r in pending))
+                                   for r in rows))
                 print(f"executor (ARMED until {arm.expires}): {job}")
-                if not dry_run:
-                    print(f"executor exit {_run_with_evidence(store, 'executor', symbol=job, model=model)}")
-            elif pending:
-                print(f"executor: {len(pending)} pending buy(s) but {arm_why} — nothing executes")
-            else:
+                t = threading.Thread(
+                    target=lambda: print(
+                        f"executor exit "
+                        f"{launcher.run_role('executor', symbol=job, model=model, quiet=True)}"))
+                t.start()
+                exec_threads.append(t)
+
+            if jobs:
+                print(f"analyst: launching {len(jobs)} in parallel "
+                      f"(x{ANALYST_WORKERS})")
+            pool = concurrent.futures.ThreadPoolExecutor(max_workers=ANALYST_WORKERS)
+            futs = {pool.submit(_analyst_job, cfg.db_path, e["id"],
+                                e["symbol"], model): e["symbol"]
+                    for e in jobs}
+            not_done = set(futs)
+            while not_done:
+                done, not_done = concurrent.futures.wait(not_done, timeout=15)
+                for f in done:
+                    sym = futs[f]
+                    try:
+                        rc, landed = f.result()
+                    except Exception as ex:  # a crashed job must not kill the tick
+                        print(f"analyst({sym}) CRASHED: {type(ex).__name__}: {ex}")
+                        continue
+                    if rc == -1:
+                        print(f"analyst({sym}) skipped — past "
+                              f"{ANALYST_START_CUTOFF.strftime('%H:%M')} start cutoff")
+                    else:
+                        print(f"analyst({sym}) exit {rc}"
+                              + ("" if landed else " — NO decision landed"))
+                now = datetime.now().time()
+                if not not_done or now >= EXEC_VALVE:
+                    _try_dispatch()
+                if not_done and now >= ENTRY_PIPELINE_CLOSE:
+                    print(f"analyst: window closed — not waiting on "
+                          f"{len(not_done)} straggler(s)")
+                    break
+            pool.shutdown(wait=False, cancel_futures=True)
+
+            # Wait for the window if analysts finished early, then sweep, and
+            # sweep once more for decisions that landed during the first sweep.
+            while arm and _undispatched() and datetime.now().time() < EXEC_NOT_BEFORE:
+                time_mod.sleep(10)
+            _try_dispatch()
+            for t in exec_threads:
+                t.join()
+            _try_dispatch()
+            for t in exec_threads:
+                t.join()
+
+            # Same-day expiry: whatever is still pending now cannot be placed
+            # inside the window (executor failed, landed too late, or not
+            # armed). Never let it ride to another day.
+            leftover = store.pending_executions()
+            for r in leftover:
+                store.mark_execution(
+                    r["id"], filled=False,
+                    detail="entry window closed before execution — expired "
+                           "same day by tick guard"
+                           + ("" if arm else f" ({arm_why})"),
+                )
+                print(f"expired pending #{r['id']} {r['symbol']} — not "
+                      "executed in window" + ("" if arm else f" ({arm_why})"))
+            if not exec_threads and not leftover:
                 print("executor: no entries pending")
 
         elif phase == "evening":

@@ -27,10 +27,13 @@ disaster valve (≥10% persistent AH loss). No resting broker stops (whipsaw
 harvest + no AH execution + gap-through). Hold cash between events.
 
 **Ticks (launchd, ET)**: 09:24 morning (exits→monitor→scout→labeler→
-strategist→ML→briefing) · 15:40 afternoon (analysis + entries) · 16:20/16:50
-evening (exit queueing + valve). `com.earnings.caffeinate` holds the Mac
-awake 06:57–~17:14 weekdays (anchored to the 06:55 wake). Per-run 22-min
-timeout. Repo lives at `~/code/agentic-trading` (moved 2026-07-07, out of
+strategist→ML→briefing) · 15:30 afternoon (parallel analysts x4 +
+deadline-aware executor dispatch; orders must PLACE inside 15:45–15:58;
+pipeline hard-gated to 15:25–15:58) · 16:20/16:50 evening (exit queueing +
+valve). Both agents RunAtLoad (reboot/login catch-up; every phase is
+re-fire-safe). `com.earnings.caffeinate` holds the Mac awake until 17:15
+weekdays (06:57 anchor + RunAtLoad re-assert after any mid-day restart).
+Per-run 22-min timeout. Repo lives at `~/code/agentic-trading` (moved 2026-07-07, out of
 iCloud sync; symlink at the old ~/Documents/GitHub path).
 
 ## Critical rules — memorize before touching anything
@@ -80,7 +83,7 @@ iCloud sync; symlink at the old ~/Documents/GitHub path).
 
 ## Common commands
 
-    python -m pytest -q                          # 63 tests — run before commits
+    python -m pytest -q                          # 89 tests — run before commits
     python -m orchestrator.main status           # context pack
     python -m orchestrator.main report [--write] # operator briefing
     python -m orchestrator.daily --phase morning|afternoon|evening --dry-run

@@ -21,7 +21,7 @@ deliberate operator act, never automatic).
 **Strategy (policy v0.6.x, evidence-locked — see reports/research/)**:
 earnings-gap capture, market-wide. AMC: enter 15:45–15:58 ET on report day.
 BMO: enter 15:45–15:58 the prior trading day. ALL exits fill in the next
-9:30 **opening auction** (queued gtc market close from the evening tick;
+9:30 **opening auction** (queued gfd market close from the evening tick;
 verified/placed at the 9:24 pre-open run). Only early exit: the 16:50
 disaster valve (≥10% persistent AH loss). No resting broker stops (whipsaw
 harvest + no AH execution + gap-through). Hold cash between events.

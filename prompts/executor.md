@@ -80,7 +80,7 @@ Direction by the job's action: `long_equity` → SELL to close;
    symbol — close exactly that (it came from this decision's entry).
 2. **Morning exits — INTO THE OPENING AUCTION**: you are launched ~9:24 ET,
    before the open. FIRST check `get_equity_orders`: the evening run usually
-   already queued the exit (gtc market order). If a queued close order exists
+   already queued the exit (gfd market order). If a queued close order exists
    for the full quantity, do NOT place another — wait for the auction fill.
    If none exists (or it was rejected/partial), immediately place a MARKET
    order (market_hours=regular_hours) for the full quantity, after review —
@@ -111,10 +111,15 @@ You run after the close (16:20 or 16:50 ET). For each position in the kickoff:
    UNAVAILABLE, never exit early regardless of the quote — record the loss in
    your report instead.
 3. **Queue the auction exit** for every position not valve-exited: place a
-   MARKET close order (market_hours=regular_hours, time_in_force=gtc) for the
-   FULL quantity. Placed after the close, it fills in tomorrow's 9:30 opening
-   auction — the exit survives even if the morning run never fires. Confirm
-   via get_equity_orders that it's queued (not rejected, not filled today)
+   MARKET close order (market_hours=regular_hours, time_in_force=gfd) for the
+   FULL quantity. Use `gfd`, NOT `gtc` — Robinhood rejects gtc on market
+   orders and on ANY fractional order, and `review_equity_order` does not
+   flag it (only the place call errors). A gfd market close placed after the
+   close still queues to tomorrow's 9:30 opening auction identically (verified
+   live 2026-07-23: VZ/NEM/EW). Placed after the close, it fills in tomorrow's
+   9:30 opening auction — the exit survives even if the morning run never
+   fires. Confirm via get_equity_orders that it's queued (not rejected, not
+   filled today)
    and list order IDs in your report. Do NOT report_live_close for queued
    orders — they haven't filled. If a queued close order already exists from
    the earlier evening run, verify it and move on — never double-queue.

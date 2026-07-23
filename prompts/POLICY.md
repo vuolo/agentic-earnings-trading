@@ -352,8 +352,9 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   post-report open for BMO and held-overnight AMC; same-day after-hours for
   AMC only when the tick authorizes it (whole-share positions, GFV guard
   clear — the context pack shows both).
-- **Exits fill IN the opening auction**: the evening tick queues a gtc market
-  close after the reaction-day close (crash-proof), and the 9:24 morning run
+- **Exits fill IN the opening auction**: the evening tick queues a gfd market
+  close after the reaction-day close (crash-proof; gfd not gtc — Robinhood
+  rejects gtc on market/fractional orders), and the 9:24 morning run
   verifies/places it pre-open — both paths fill at the 9:30 auction print,
   the exact price the backtests measure. Nobody waits for a bounce (post-open
   fade: winners −2.7% by 10:00); holding past the open requires a future

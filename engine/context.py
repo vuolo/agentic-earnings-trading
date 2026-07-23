@@ -149,7 +149,7 @@ def build_context_pack(cfg: Config, store: Store) -> str:
     lines.append(
         "strategy_windows: AMC → enter ~15:40-15:55 ET on report day; BMO → "
         "enter near close the prior trading day. ALL exits fill in the next "
-        "9:30 opening auction (queued gtc market close from the evening tick; "
+        "9:30 opening auction (queued gfd market close from the evening tick; "
         "verified 9:24 pre-open). Only early-exit path: the 16:50 disaster "
         "valve (>=10% persistent AH loss). Fractional/dollar orders are "
         "market + regular-hours only."

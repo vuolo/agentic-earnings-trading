@@ -1,10 +1,10 @@
-# Per-Symbol Playbook (evidence-based; updated 2026-07-22)
+# Per-Symbol Playbook (evidence-based; updated 2026-07-23)
 
 Per-name signatures from 90 events (6 quarters, daily) + 15 recent events
 (5-min/hourly/AH/premarket), plus labeled live outcomes as they land. These
 are priors, not laws — weigh them in your snapshot and thesis; cite the
 playbook line when it moves your decision.
-Source: reports/research/2026-07-05-* studies; labeled decisions #1-#25.
+Source: reports/research/2026-07-05-* studies; labeled decisions #1-#31.
 
 - **TSM** (bmo, reports ~2am ET): small up-gaps (5/6, +2 to +6%), day-0 drift
   NEGATIVE 6/6, and the fade starts in premarket (Apr: only 4:30–5am beat the
@@ -50,62 +50,84 @@ Cross-cutting (all 90 events): moderate up-gaps (+2–10%) fade day-0 (−2.2 to
 −2.6% avg); moderate down-gaps (5–10%) bounce slightly (+0.7%); giant gaps
 (>10%) are name-specific — use the lines above, not the average.
 
-Cross-cutting (labeled live outcomes, n=18 events, updated 2026-07-22):
+Cross-cutting (labeled live outcomes, n=21 events, updated 2026-07-23):
 - **An n ≤ 6 backtest gap DIRECTION is a variance estimate, not an edge.** It
   was wrong in 6 of the first 6 labeled events (#2 PEP up_rate 0.67 → down;
   #3 LEVI mean +3.32% → down; #4 SMPL up_rate 0.33 → +17.06% UP; #5 DAL
   up_rate 0.83 → down; #6 ERIC mean +2.94% → −11.10%; #7 CAG up_rate 0.80 →
-  down), and the 7/17-7/21 batch kept overriding it profitably (#13 RYAAY
-  up_rate 0.83 → −5.37%; #20 SCHW up_rate 0.83 → −1.10% counterfactual).
-  Read `up_rate` and `mean_pct` as "how wide is this name's distribution,"
-  and source your DIRECTION from a concrete forward catalyst, guidance,
-  sentiment, or a playbook line. Conviction is capped at 0.60 on a
-  weak-basis lean (policy v0.7.2).
-- **The high-bar asymmetry lean (template ii) works ONLY near the 52-week
-  HIGH (policy v0.8.2).** All five winners sat within ~4.2% of the high
-  after a run: #18 KEY (1.8% off, −1.64%, +$0.68), #11 DX (post-run premium
-  to stale book, −1.20%, +$0.58), #23 NLY (3% off at 1.14x book, −1.21%,
-  +$1.44), #25 ONB (4.2% off after +14.5%, −1.03%, +$0.28), #20 SCHW
-  (1.5% off, counterfactual −1.10%). Applied to names at or bouncing off
-  52-week LOWS it is 0-for-2: #24 EQT (0.4% off the low, 6/6 beats,
-  relief-popped +2.04%, −$1.77) and #22 T (+12% bounce off the 7/2 low,
-  gapped +4.27%, −$3.00). Bearish into a beaten-down name is the mirror of
-  the failed cheapness longs — "already fallen" is not a down-catalyst; at
-  the lows demand template (i) or cap conviction at 0.50.
-- **Bearish paper legs are 7-1-2 (net +$4.45), and the down-tape is
-  fading.** 14 of 18 labeled events moved down or flat at the exit, but 3
-  of the 5 newest were UP (#22 T +4.27%, #24 EQT +2.04%, #21 WBS +1.0%
-  counterfactual). Do NOT default bearish: the first two bearish losses
-  cost −$4.77 in one batch, and template discipline (location + catalyst),
-  not direction, is what separated them from the same-day winners.
+  down), and later batches kept overriding it profitably (#13 RYAAY
+  up_rate 0.83 → −5.37%; #20 SCHW up_rate 0.83 → −1.10% counterfactual;
+  #25 ONB up-biased 5/6 → −1.03%). Read `up_rate` and `mean_pct` as "how
+  wide is this name's distribution," and source your DIRECTION from a
+  concrete forward catalyst, guidance, sentiment, or a playbook line.
+  Conviction is capped at 0.60 on a weak-basis lean (policy v0.7.2).
+- **The high-bar asymmetry lean (template ii) has an edge ONLY within ~4% of
+  the 52-week HIGH (policy v0.8.3).** Near the high it is 5-for-5: #18 KEY
+  (1.8% off, −1.64%, +$0.68), #11 DX (post-run premium to stale book,
+  −1.20%, +$0.58), #23 NLY (3% off at 1.14x book, −1.21%, +$1.44), #25 ONB
+  (4.2% off after +14.5%, −1.03%, +$0.28), #20 SCHW (1.5% off, counterfactual
+  −1.10%). Away from the high it has NO edge: at MID-RANGE (5-7% off) it is
+  1-1 with both moves sub-1% — noise (#28 KMI 6.8% off, +0.60% wrong;
+  #29 ELS 5.2% off, −0.27% barely right); at the LOWS it is 0-for-2 (#24 EQT
+  0.4% off the low relief-popped +2.04%, −$1.77; #22 T +12% bounce off the
+  7/2 low gapped +4.27%, −$3.00). A bearish lean off template (ii) at >~4%
+  off the high is the mirror of the failed cheapness longs — "already fallen"
+  is not a down-catalyst; off-high demand template (i) or cap conviction at
+  0.50 and take floor size / a coin-flip pass.
+- **Template (i) — concrete negative forward catalyst — is 3-for-3 and
+  LOCATION-INDEPENDENT (policy v0.8.3).** #7 CAG (dividend cut, −2.54%,
+  +$1.91), #8 UAL (fuel above cost assumption, −3.07%, +$2.30), #30 AAL (the
+  same June fuel shock above the guidance curve, −6.85%, +$3.96, biggest
+  bearish win); #13 RYAAY (−22% YoY EPS guide, −5.37%, +$1.93) is a fourth.
+  AAL won at MID-RANGE location (21.5% off the high) because momentum was
+  BREAKING DOWN into the print (−19% in 3 weeks) — the discriminator vs the
+  T/EQT losers is momentum DIRECTION, not distance-from-high. A concrete
+  forward catalyst into a down-sliding tape overrides the near-high
+  requirement; a catalyst-less bearish lean into UP momentum off a low is the
+  failure mode.
+- **Bearish paper legs (template era, post-SMPL) are 9-1-3, net +$7.90; the
+  down-tape is fading.** Most labeled events moved down or flat, but the UP
+  prints are piling up (#22 T +4.27%, #24 EQT +2.04%, #28 KMI +0.60%, #21 WBS
+  +1.0% counterfactual). Do NOT default bearish: the three bearish losses (T,
+  EQT, KMI) all leaned off-template (wrong location, no forward catalyst).
+  Template discipline (location + catalyst + momentum direction), not a
+  down-tape prior, is what separates winners from losers.
 - **Longs are 0-for-4; cheapness / beats / momentum are NOT catalysts in
   EITHER direction.** Every failed long rested on a backward-looking leg
   and gapped down: #2 PEP (cheap + target cuts) −3.93%; #3 LEVI (6 beats
   near 52w high) −4.17%; #5 DAL (6-for-6 beats + rising trend) −0.61%;
   #6 ERIC (de-rated + pre-print pop) −11.10%. The bearish mirrors (#22 T,
-  #24 EQT) leaned on de-rated tape/overhang sentiment and lost. Name the
-  forward catalyst.
-- **The ML sidecar's confident down-band (prob_up < 0.35) is 7-for-10, and
+  #24 EQT, #28 KMI) leaned on de-rated/mid-range beatable-bar sentiment and
+  did not gap down. Name the forward catalyst.
+- **The ML sidecar's confident down-band (prob_up < 0.35) is 8-for-12, and
   depth adds no calibration.** Right: #11 DX 0.267, #13 RYAAY 0.244,
   #17 AGNC 0.264, #18 KEY 0.315, #20 SCHW 0.277, #23 NLY 0.175, #25 ONB
-  0.213. Wrong: #22 T 0.229, #24 EQT 0.199, #21 WBS 0.215 (counterfactual).
-  Its two deepest reads ever (0.175, 0.199) split one right one wrong.
-  Corroboration only, never a catalyst substitute (policy v0.8.2).
+  0.213, #29 ELS 0.287. Wrong: #22 T 0.229, #24 EQT 0.199, #21 WBS 0.215
+  (counterfactual), #28 KMI 0.289. Its two deepest reads ever (0.175, 0.199)
+  split, and #28/#29 (both ~0.288) split — no per-read calibration.
+  Corroboration only, never a catalyst substitute (policy v0.8.3).
 - **The implied move is the safer SIZING number; chain quality decides how
   literally to read it.** Realized breached the historical tail in 4 events
   with implied closer each time (#4 SMPL 16.97% implied vs 17.06%; #6 ERIC
   −11.10% vs worst −10.39%; #22 T +4.27% vs best +3.43%, covered by the
   2-DTE implied 5.19%). Short-DTE weeklies are trustworthy (#22 T 5.19 vs
-  4.27; #24 EQT 4.2 vs 2.04; #23 NLY 2.45 vs 1.21); distant monthlies run
-  hot (#13 RYAAY 10.16% on 35-DTE vs 5.37%; #18 KEY 6.98% vs 1.64%;
-  #25 ONB 10.8% on 30-DTE vs 1.03%). Size against `max(implied, |tail|)`;
-  report straddle DTE/strike quality.
+  4.27; #24 EQT 4.2 vs 2.04; #23 NLY 2.45 vs 1.21; #30 AAL 1-DTE 6.31 vs
+  6.85, the closest read yet); distant monthlies run hot (#13 RYAAY 10.16%
+  on 35-DTE vs 5.37%; #18 KEY 6.98% vs 1.64%; #25 ONB 10.8% on 30-DTE vs
+  1.03%; #29 ELS 6.12% on 30-DTE vs 1.58% mean). Size against
+  `max(implied, |tail|)`; report straddle DTE/strike quality.
 - **The opening auction is the capture, and paper legs must exit there
   too.** SMPL printed 15.03 in the auction and traded 13.47 by 09:39 ET,
   −10.4% in nine minutes. #11 DX and #13 RYAAY were closed a day late,
   contaminating labels and bouncing #19 HAL / forcing #20 SCHW to pass.
-  The v0.8.1 fix is VERIFIED: all four 7/21 legs (#22, #23, #24, #25)
-  closed on time at the 7/22 auction window, no slot contamination.
+  The v0.8.1 fix is VERIFIED across two batches: all four 7/21 legs (#22-#25)
+  closed on time at the 7/22 window, and the 7/22-7/23 legs (#28-#30) closed
+  on time at the 7/23 window — no slot contamination in either.
+- **Slots are scarce on crowded calendars; spend them on edge.** #31 NOK was
+  a forced pass with 5/5 slots legitimately full of same-day entries (ACI,
+  PNFP, KMI, ELS, AAL) — NOT the stale-leg contamination that cost #19/#20.
+  On a full slate, prioritize template-(i) catalysts and near-high
+  template-(ii) over mid-range asymmetry leans, which are noise (KMI, ELS).
 - **Verify the report date.** #12 WBS and #15 FERG were decided against
   mis-dated calendar rows; FERG had no event at all (next report 8/10) —
   a wasted decision slot. State the date source and a second-source check
@@ -155,7 +177,7 @@ Realized (labeled outcomes):
   was the concrete forward catalyst; it overrode the bullish up_rate 0.67
   and the cheap 10.7x P/E pullback (deliberately NOT used as legs). Second
   confirmation of the CAG template, and DAL's 7/10 down-gap was a valid
-  same-sector tell.
+  same-sector tell. Same fuel-shock catalyst won AAL #30 eight days later.
 - **DX** (bmo 7/20) — **traded bearish paper, RIGHT, −1.20%** (#11, +$0.58).
   High-bar setup: consensus EPS $0.50 above EVERY actual of the last 6
   quarters (missed 5 of 6) plus a premium to stale book after a sector-beta
@@ -163,7 +185,7 @@ Realized (labeled outcomes):
   labeled move includes a day of extra drift. mREITs gap small — the DX/AGNC
   pair confirmed the complex's event edge is structurally modest.
 - **RYAAY** (bmo 7/20) — **traded bearish paper, RIGHT, −5.37%** (#13,
-  +$1.93, biggest bearish win yet). Concrete catalyst stack: guided −22% YoY
+  +$1.93). Concrete catalyst stack: guided −22% YoY
   EPS, FY consensus down ~24% in 90 days, T-1 −5.8% break on the worst tape
   in the airline group, insider sale. Overrode up_rate 0.83. LABEL CAVEAT:
   closed a day late (7/21). Chain quality is poor (35-DTE monthly, $5
@@ -211,6 +233,32 @@ Realized (labeled outcomes):
   correctly overrode ONB's up-biased gap history (5/6 up, mean +1.39%).
   Chain junk (30-DTE monthly, zero-OI put): implied 10.8% vs 1.03%
   realized, treat as upper bound only.
+- **KMI** (7/23 open exit) — **traded bearish paper, WRONG, gap +0.60%**
+  (#28, −$0.62). Mid-range template-ii asymmetry lean with NO catalyst:
+  6.8% off the high (26.8% above the low, NOT the T/EQT at-the-low failure),
+  modest +10.7% YoY bar after a big Q1 beat that faded, ML 0.289. It gapped
+  +0.60% — noise, the mid-range no-edge zone (policy v0.8.3). Clean 2-DTE
+  weekly implied 2.84% vs 0.60% realized (trustworthy chain, small event).
+  Lesson: at 5-7% off the high the asymmetry lean is a coin flip — floor
+  size or pass, and don't spend a slot on it when the calendar is full.
+- **ELS** (amc 7/22, 7/23 exit) — **traded bearish paper, RIGHT (barely),
+  −0.27%** (#29, +$0.13). Template-ii asymmetry at 5.2% off the high — just
+  OUTSIDE the ~4% band — with 4 straight 23-29% beats that gapped down 5/6,
+  reaffirmed guidance, 33.7x PE, ML 0.287. Near-flat reaction: another
+  mid-range noise print, not a validated edge. Coarse 30-DTE monthly implied
+  6.12% vs 1.58% mean — conservative upper bound. Location must be inside
+  ~4%, not merely "elevated."
+- **AAL** (bmo 7/23) — **traded bearish paper, RIGHT, −6.85%** (#30, +$3.96,
+  biggest bearish win yet). Template-(i) concrete forward catalyst: the June
+  Middle East jet-fuel shock (~+70%, IATA cut sector profit forecasts) sits
+  above the fuel curve behind AAL's April guidance, and FY consensus ($0.49)
+  had been revised UP into the print — the SAME catalyst that won UAL #8, with
+  DAL/UAL prints 2-for-2 down. Location was MID-RANGE (21.5% off the high) but
+  momentum was BREAKING DOWN (−19% in 3 weeks, −3.5% on the day): template (i)
+  is location-independent when the catalyst is concrete and the tape slides
+  down. Conviction held at 0.55 (shock 3 weeks old, low bar, relief-pop risk,
+  ML 0.452 outside the down-band). Fine 1-DTE weekly implied 6.31% vs 6.85%
+  realized — the closest read in the book.
 - **WBS** (amc 7/21) — **passed twice, RIGHT, +1.0%** (#12, #21). Merger
   math pins the price ($48.75 cash + 2.0548 SAN ADS, ~0.9% arb discount,
   no earnings call): the print cannot move consideration, so the event is
@@ -218,6 +266,17 @@ Realized (labeled outcomes):
   until the deal closes or the spread blows out (which WOULD be a concrete
   catalyst). #12 was decided against a mis-dated calendar row (7/17 vs the
   real 7/21 amc).
+- **NOK** (bmo 7/23) — **forced pass (#31, slots full), counterfactual
+  −1.17%**. 5/5 slots were legitimately full of same-day entries and the
+  T-1 window had elapsed when the run started (~16:04 ET) — a CAPACITY pass
+  (disqualifier d), NOT the stale-leg contamination that cost #19/#20. The
+  stated lean was a floor-size long: the bar had been cut 39% in six weeks
+  into an intact AI/optical demand story (NI guide raised, NVDA optical
+  partnership), and a bearish leg would have needed a concrete negative
+  catalyst that H2 margin chatter did not provide (ML 0.351, outside the
+  down-band). It gapped −1.17%, so a small bearish leg would have edged out a
+  small win — but the read was a coin flip on a wide-tailed event (12.43%
+  2-DTE implied). Slot allocation, not direction, was the binding call.
 - **FERG** — **pass on date-integrity, RIGHT** (#15): the 7/21 calendar row
   was false; verified next report 2026-08-10 (calendar still shows phantom
   7/28 and 7/31 rows). Do not decide FERG until the date verifies.

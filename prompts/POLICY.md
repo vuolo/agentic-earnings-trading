@@ -1,7 +1,37 @@
 # Trading Policy
 
-Version: 0.8.2
+Version: 0.8.3
 Mode: live when the operator's arm switch is active; paper otherwise
+
+v0.8.3 (strategist review, 2026-07-23, n=21 labeled events, 3 new closed
+trades + 1 pass since v0.8.2): the location story sharpens into a
+MOMENTUM-DIRECTION story. #30 AAL (bearish, -6.85%, +$3.96, biggest bearish
+win yet) is the THIRD template-(i) concrete-forward-catalyst win (after #7
+CAG, #8 UAL) and the FIRST at mid-range location (21.5% off the high) - it
+worked because momentum was BREAKING DOWN into the print (-19% in 3 weeks,
+the same June jet-fuel shock that won UAL), the exact opposite of the T/EQT
+losers that were bouncing UP off 52-week lows. The discriminator for a
+bearish lean is therefore momentum DIRECTION into the print, not
+distance-from-high alone: template (i) overrides the near-high requirement
+when the catalyst is concrete AND the tape is sliding down. Two mid-range
+template-(ii) asymmetry leans with NO catalyst confirm the mirror: #28 KMI
+(+0.60%, -$0.62, wrong) at 6.8% off the high and #29 ELS (-0.27%, +$0.13,
+barely right) at 5.2% off - both moved sub-1%, i.e. NOISE. Template (ii) is
+now 5-for-5 within ~4% of the high, 1-1 at 5-7% off (no edge), 0-for-2 at
+the lows. Four PATCH refinements, no rule flips: (1) template (i) is
+documented as validated 3-for-3 and LOCATION-INDEPENDENT when momentum
+breaks down into the print; (2) template (ii) at >~4% off the high is
+reclassified as NO-EDGE - floor size or a coin-flip pass, do not spend a
+scarce slot on it; (3) the ML down-band (prob_up < 0.35) is now 8-for-12
+(#29 ELS 0.287 right, #28 KMI 0.289 wrong added), corroboration only;
+(4) #31 NOK was a forced pass on FULL slots (5/5 legitimate same-day
+entries, NOT stale-leg contamination - the v0.8.1 on-time-exit fix is
+holding), a capacity reminder that on crowded calendars slot allocation
+should favor template-(i) catalysts and near-high template-(ii) over
+mid-range noise leans. Template-era bearish paper (post-SMPL) is now 9-1-3,
+net +$7.90; longs remain 0-for-4 (#27 PNFP exec_failed, no new long
+landed). Do NOT default bearish - direction still comes from a concrete
+forward catalyst or a near-high asymmetry setup, never from location alone.
 
 v0.8.2 (strategist review, 2026-07-22, n=18 labeled events, 5 new since
 v0.8.1): the bearish streak broke and the break is informative. #23 NLY
@@ -143,8 +173,10 @@ marked (server) MUST be tool outputs embedded verbatim — never hand-computed:
    implied 10.16% on a 35-DTE straddle vs 5.37% realized; #18 KEY 6.98% vs
    1.64%). Conversely (v0.8.2), a 2-3 DTE weekly with fine strikes is a
    trustworthy estimate: #22 T implied 5.19% vs 4.27% realized, #24 EQT
-   4.2% vs 2.04%, #23 NLY 2.45% vs 1.21% - while #25 ONB's 30-DTE monthly
-   said 10.8% vs 1.03% realized. Sizing still uses max() - the bias is
+   4.2% vs 2.04%, #23 NLY 2.45% vs 1.21%, and (v0.8.3) #30 AAL a fine 1-DTE
+   weekly 6.31% vs 6.85% realized - the closest read yet - while distant
+   monthlies still run hot (#25 ONB 30-DTE 10.8% vs 1.03%; #29 ELS 30-DTE
+   6.12% vs 1.58% mean). Sizing still uses max() - the bias is
    conservative.
 2. **computed** (server) — `compute_indicators` over ~3 months of daily bars:
    rsi14, atr14_pct, realized_vol20_pct, volume_z20, sma trend, distance from
@@ -166,15 +198,17 @@ marked (server) MUST be tool outputs embedded verbatim — never hand-computed:
    AI-complex risk).
 7. **ml_advisory** (server) — `get_ml_prediction` output, recorded on every
    decision. The sidecar is above base rate (141 rows, CV 53% vs 48%) and
-   its confident down-band (prob_up < 0.35) is 7-for-10 directionally
-   through 7/22 (right: #11 DX 0.267, #13 RYAAY 0.244, #17 AGNC 0.264,
-   #18 KEY 0.315, #20 SCHW 0.277, #23 NLY 0.175, #25 ONB 0.213; wrong:
-   #22 T 0.229, #24 EQT 0.199, #21 WBS 0.215 counterfactual). Its two
-   deepest reads ever (0.175 and 0.199) split one right one wrong - depth
-   adds no calibration (v0.8.2). It may corroborate a lean and temper
-   conviction, but it never satisfies the entry rules by itself, never
-   overrides them, and never lifts conviction past the 0.60 weak-basis cap -
-   it is trained on the same small, down-heavy sample it is predicting.
+   its confident down-band (prob_up < 0.35) is 8-for-12 directionally
+   through 7/23 (right: #11 DX 0.267, #13 RYAAY 0.244, #17 AGNC 0.264,
+   #18 KEY 0.315, #20 SCHW 0.277, #23 NLY 0.175, #25 ONB 0.213, #29 ELS
+   0.287; wrong: #22 T 0.229, #24 EQT 0.199, #21 WBS 0.215 counterfactual,
+   #28 KMI 0.289). Its two deepest reads ever (0.175 and 0.199) split one
+   right one wrong - depth adds no calibration (v0.8.2), and #28/#29 (both
+   ~0.288, split) confirm the band is corroboration, not a catalyst. It
+   may corroborate a lean and temper conviction, but it never satisfies
+   the entry rules by itself, never overrides them, and never lifts
+   conviction past the 0.60 weak-basis cap - it is trained on the same
+   small, down-heavy sample it is predicting.
 8. **event** — report_date, timing (bmo/amc), source of that date, and
    (v0.8.2) whether a second source confirms it: #12 WBS and #15 FERG were
    decided against mis-dated calendar rows, and FERG had no event at all
@@ -209,36 +243,47 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
     bearish paper legs are participation too).
   - Shorts use the backtest's BEST gap (upside tail) as the historical input
     to the risk check — a short's worst case is the stock gapping UP.
-- **Live calibration caution (v0.7.2, updated v0.8.2 — do NOT flip the
-  default)**: through n=18 labeled events, 14 moved down or flat at the
-  exit, but 3 of the 5 NEWEST moved UP (#22 T +4.27%, #24 EQT +2.04%,
-  #21 WBS +1.0% counterfactual) - the down-tape is fading, and the first
-  two bearish paper losses (net -$3.05 on the 7/21-7/22 batch) are the
-  direct cost of leaning bearish off-template. Longs remain 0-for-4 (no
-  new longs landed - #16 MMM exec_failed, #19 HAL gate-rejected); bearish
-  paper legs are 7-1-2 (seven wins, one flat, two losses, net +$4.45).
-  Two direction-sourcing templates are validated at exploration size:
-  (i) **concrete negative forward catalyst** — #7 CAG (imminent dividend
-  cut), #8 UAL (fuel surged above management's cost assumption), #13 RYAAY
-  (guided −22% YoY EPS, 90-day estimate collapse, T-1 −5.8% break); and
+- **Live calibration caution (v0.7.2, updated v0.8.3 — do NOT flip the
+  default)**: through n=21 labeled events, most moved down or flat at the
+  exit, but the down-tape is fading (#22 T +4.27%, #24 EQT +2.04%, #28 KMI
+  +0.60%, #21 WBS +1.0% counterfactual all UP) - so direction must come
+  from a template, never from a "down-tape" prior. Longs remain 0-for-4
+  (#27 PNFP exec_failed, no new long landed); template-era bearish paper
+  (post-SMPL) is 9-1-3, net +$7.90. Two direction-sourcing templates are
+  validated at exploration size:
+  (i) **concrete negative forward catalyst** — validated 3-for-3: #7 CAG
+  (imminent dividend cut, -2.54%), #8 UAL (jet fuel surged above
+  management's cost assumption, -3.07%), #30 AAL (same June fuel shock
+  above the guidance curve into a low bar, -6.85%, +$3.96); #13 RYAAY
+  (guided −22% YoY EPS, 90-day estimate collapse, T-1 −5.8% break, -5.37%)
+  is a fourth. This template is LOCATION-INDEPENDENT (v0.8.3): AAL won at
+  mid-range (21.5% off the high) because momentum was BREAKING DOWN into
+  the print (-19% in 3 weeks) - the discriminator vs the T/EQT losers is
+  momentum DIRECTION, not distance-from-high. A concrete forward catalyst
+  plus a tape sliding DOWN into the print overrides the near-high
+  requirement of template (ii); a catalyst-less bearish lean into UP
+  momentum off a low is the failure mode (T, EQT).
   (ii) **high-bar asymmetry lean, conviction ≤ 0.55, ONLY on a name
-  EXTENDED NEAR ITS 52-WEEK HIGH (v0.8.2)** — an elevated consensus bar
-  into an extended tape where the name's own precedent shows good news
-  pays poorly, corroborated by an above-base-rate ML read. All five
-  winners sat within ~4.2% of the 52-week high after a run (#18 KEY 1.8%
-  off, #11 DX post-run premium to stale book, #23 NLY 3% off at 1.14x
-  book, #25 ONB 4.2% off after +14.5%, #20 SCHW 1.5% off counterfactual).
-  Applied to names at or bouncing off 52-week LOWS it is 0-for-2: #24 EQT
-  (0.4% off the low, 6/6 beats, relief-popped +2.04%) and #22 T (+12%
-  bounce off the 7/2 low, gapped +4.27% - its "overhang" list of
-  downgrades and threats was sentiment, not a forward catalyst). A bearish
-  lean on a beaten-down/de-rated name is the MIRROR of the failed
-  cheapness longs: "already fallen" is not a down-catalyst. On such names
-  a bearish leg requires template (i); otherwise cap conviction at 0.50
-  and prefer floor size or a documented coin-flip pass. The asymmetry
-  lean is NOT a catalyst — it never lifts conviction past 0.55. A long
-  still requires a named CONCRETE FORWARD catalyst in the thesis;
-  "cheap / beats / momentum" is not one — see the cap below.
+  EXTENDED NEAR ITS 52-WEEK HIGH (~4%, v0.8.2)** — an elevated consensus
+  bar into an extended tape where the name's own precedent shows good news
+  pays poorly, corroborated by an above-base-rate ML read. Near the high
+  it is 5-for-5 (#18 KEY 1.8% off, #11 DX post-run premium to stale book,
+  #23 NLY 3% off at 1.14x book, #25 ONB 4.2% off after +14.5%, #20 SCHW
+  1.5% off counterfactual). Away from the high it has NO edge (v0.8.3): at
+  the LOWS it is 0-for-2 (#24 EQT 0.4% off the low relief-popped +2.04%;
+  #22 T +12% bounce off the 7/2 low gapped +4.27% on sentiment "overhang,"
+  not a catalyst), and at MID-RANGE (5-7% off the high) it is 1-1 with
+  both moves sub-1% - noise (#28 KMI 6.8% off, +0.60% wrong; #29 ELS 5.2%
+  off, -0.27% barely right). A bearish lean off template (ii) at >~4% off
+  the high is the MIRROR of the failed cheapness longs: "already fallen"
+  (and "modestly de-rated") is not a down-catalyst. Off-high, a bearish
+  leg requires template (i); otherwise cap conviction at 0.50, take floor
+  size or a documented coin-flip pass, and on a crowded calendar do NOT
+  spend a scarce slot on a mid-range asymmetry lean (#31 NOK was a forced
+  pass on 5/5 full slots). The asymmetry lean is NOT a catalyst — it never
+  lifts conviction past 0.55. A long still requires a named CONCRETE
+  FORWARD catalyst in the thesis; "cheap / beats / momentum" is not one —
+  see the cap below.
 - **Conviction cap on weak-basis leans (v0.7.1, tightened v0.7.2)**: cap
   conviction at **0.60** whenever your directional lean rests primarily on
   either (a) the backtest's gap direction (`up_rate` or the sign of

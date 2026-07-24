@@ -291,14 +291,22 @@ def get_pending_executions() -> str:
 
 @mcp.tool()
 def report_execution(
-    decision_id: int, filled: bool, fill_price: float = 0.0, detail: str = ""
+    decision_id: int, filled: bool, fill_price: float = 0.0, detail: str = "",
+    filled_notional: float = 0.0,
 ) -> str:
     """Report the result of executing a pending_live decision. filled=True
     requires the real fill_price; filled=False marks exec_failed with detail
-    (e.g. 'order unfilled, cancelled' or 'price moved beyond guard')."""
+    (e.g. 'order unfilled, cancelled' or 'price moved beyond guard').
+
+    filled_notional: the REAL dollars filled (shares * fill_price). Pass it for
+    a WHOLE-SHARE order, where floor(dollars/ask) shares cost less than the
+    requested size — it corrects the stored position size so P&L and the
+    exposure budget match reality. Omit (0) for a fractional/dollar order, which
+    fills the full requested notional."""
     row = STORE.mark_execution(
         decision_id, filled=filled,
         fill_price=fill_price if fill_price > 0 else None, detail=detail,
+        filled_notional=filled_notional if filled_notional > 0 else None,
     )
     if row is None:
         return (

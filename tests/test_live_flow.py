@@ -45,6 +45,26 @@ def test_mark_execution_guards(store):
     assert store.mark_execution(9999, filled=False) is None
 
 
+def test_whole_share_fill_corrects_size(store):
+    # Whole-share entry: decided $200 notional, but only 1 share @ $150 filled.
+    # size_usd must drop to the real $150 so P&L and budget aren't inflated.
+    did = _pending(store)  # size_usd=200, entry 100
+    row = store.mark_execution(did, filled=True, fill_price=150.0,
+                               filled_notional=150.0, detail="1 whole share")
+    assert row["size_usd"] == pytest.approx(150.0)
+    assert row["entry_price"] == pytest.approx(150.0)
+    # P&L now computed off the corrected notional: 1 share * (165-150) = $15.
+    result = store.close_live(did, 165.0)
+    assert result["pnl_usd"] == pytest.approx(15.0)
+
+
+def test_fractional_fill_keeps_size(store):
+    # No filled_notional (fractional/dollar order) leaves size_usd untouched.
+    did = _pending(store)  # size_usd=200
+    row = store.mark_execution(did, filled=True, fill_price=100.0)
+    assert row["size_usd"] == pytest.approx(200.0)
+
+
 def test_live_close_records_real_pnl(store):
     did = _pending(store, report_date="2026-07-10")
     store.mark_execution(did, filled=True, fill_price=100.0)

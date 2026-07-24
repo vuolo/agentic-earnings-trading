@@ -314,6 +314,30 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                 print(f"executor (ARMED until {arm.expires}): {job}")
                 if not dry_run:
                     print(f"executor exit {_run_with_evidence(store, 'executor', symbol=job, model=model)}")
+                    # Backstop: the executor must not end a morning close run
+                    # with an assigned position still open_live — that means it
+                    # exited before the 9:30 cross without recording the fill
+                    # (proven 2026-07-24: VZ/NEM/EW exits filled at the auction
+                    # but were never report_live_close'd; the tick reported
+                    # success while 3 positions rode as phantom-open). Convert
+                    # that silent gap into a loud, same-run failure so the
+                    # operator/monitor reconciles instead of discovering it days
+                    # later. We cannot auto-close (broker access is agent-only),
+                    # but we refuse to report the tick clean.
+                    still_open = store.due_live_closes(today.isoformat())
+                    if still_open:
+                        ids = ", ".join(f"#{r['id']} {r['symbol']}" for r in still_open)
+                        msg = (f"morning exits NOT recorded for {ids} — executor "
+                               "returned with positions still open_live (fill "
+                               "unreported or exit unfilled); needs reconciliation")
+                        print(f"executor: ⚠ {msg}")
+                        # Dedicated key (tick() clears last_tick_error on a
+                        # clean phase, so it can't carry this): persists until a
+                        # later exit run records the fills. _notify is immediate.
+                        store.meta_set("exit_reconcile_needed", ids)
+                        _notify(f"earnings: {msg[:120]}")
+                    else:
+                        store.meta_set("exit_reconcile_needed", "")
             elif live_closes:
                 print(f"executor: {len(live_closes)} live close(s) due but {arm_why} "
                       "— MANUAL ACTION NEEDED (positions are real)")

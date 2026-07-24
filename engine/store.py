@@ -476,6 +476,7 @@ class Store:
     def mark_execution(
         self, decision_id: int, *, filled: bool,
         fill_price: float | None = None, detail: str = "",
+        filled_notional: float | None = None,
     ) -> sqlite3.Row | None:
         d = self.get_decision(decision_id)
         if d is None or d["status"] != "pending_live":
@@ -483,11 +484,26 @@ class Store:
         if filled:
             if not fill_price or fill_price <= 0:
                 return None
-            self._db.execute(
-                """UPDATE decisions SET status = 'open_live', entry_price = ?,
-                   exec_detail = ? WHERE id = ?""",
-                (fill_price, detail, decision_id),
-            )
+            # Correct size_usd to what ACTUALLY filled when the executor reports
+            # it. A whole-share entry buys floor(dollars/ask) shares, so the real
+            # notional (shares*fill_price) is smaller than the intended size_usd
+            # — leaving the intended value inflates every downstream P&L and the
+            # exposure budget (proven 2026-07-24: VZ decided $81.39, filled 1
+            # share ≈ $43.82, an 86% overstatement). Fractional/dollar orders
+            # fill the full notional, so the executor passes size_usd there and
+            # this is a no-op. filled_notional<=0/None ⇒ keep the recorded size.
+            if filled_notional and filled_notional > 0:
+                self._db.execute(
+                    """UPDATE decisions SET status = 'open_live', entry_price = ?,
+                       size_usd = ?, exec_detail = ? WHERE id = ?""",
+                    (fill_price, filled_notional, detail, decision_id),
+                )
+            else:
+                self._db.execute(
+                    """UPDATE decisions SET status = 'open_live', entry_price = ?,
+                       exec_detail = ? WHERE id = ?""",
+                    (fill_price, detail, decision_id),
+                )
         else:
             self._db.execute(
                 "UPDATE decisions SET status = 'exec_failed', exec_detail = ? WHERE id = ?",

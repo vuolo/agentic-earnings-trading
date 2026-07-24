@@ -66,10 +66,14 @@ For each `#id SYMBOL ACTION $size @ref` in the kickoff — `long_equity` = BUY,
      one share), report failed ("price exceeds size — cannot short
      fractionally").
 5. Confirm via `get_equity_orders`. Filled → `report_execution(id,
-   filled=true, fill_price=<average fill>)` (note whole vs fractional in
-   detail). Unfilled limit near the close → `cancel_equity_order`, then
-   report failed ("unfilled, cancelled"). Never leave an entry resting
-   overnight.
+   filled=true, fill_price=<average fill>, filled_notional=<shares × fill
+   price>)` (note whole vs fractional in detail). **Always pass
+   `filled_notional` for a WHOLE-SHARE order** — floor(dollars/ask) shares
+   cost less than the requested size, and without it the stored position size
+   stays inflated (wrong P&L + wrong budget). For a fractional/dollar order
+   the full notional filled, so omit it (or pass the order dollars). Unfilled
+   limit near the close → `cancel_equity_order`, then report failed
+   ("unfilled, cancelled"). Never leave an entry resting overnight.
 
 ## Close jobs (open_live positions)
 
@@ -85,11 +89,20 @@ Direction by the job's action: `long_equity` → SELL to close;
    If none exists (or it was rejected/partial), immediately place a MARKET
    order (market_hours=regular_hours) for the full quantity, after review —
    placed pre-open it fills in the 9:30:00 opening cross at the auction
-   print, exactly the price the backtests measure. Then poll
-   `get_equity_orders` after the open until the fill lands and
-   `report_live_close` with the actual average price. (Fractional quantities
+   print, exactly the price the backtests measure. (Fractional quantities
    queue fine on market + regular_hours orders.)
-3. On fill: `report_live_close(id, exit_price=<average fill>, notes=...)`.
+3. **You OWN the fill report — do not end this run until every assigned
+   position is closed AND reported.** Whether you placed the order or the
+   evening run queued it, WAIT for the 9:30 cross (poll `get_equity_orders`
+   past 9:30:00 ET, re-polling every ~30-60s), and the moment each exit shows
+   `filled`, call `report_live_close(id, exit_price=<average fill>,
+   notes=...)`. Never exit the run leaving an assigned position still
+   open_live because "the order is resting" — the queued order filling but
+   never being reported is exactly the failure that left VZ/NEM/EW as
+   phantom-open on 2026-07-24. If an exit is genuinely still unfilled after
+   ~10 min of polling (halt, illiquid auction), say so explicitly in your
+   report and leave it open — but that is the ONLY reason to end with an
+   unreported position, and it must be stated, never silent.
 
 ## Evening jobs ("queue auction exits; disaster valve ...")
 

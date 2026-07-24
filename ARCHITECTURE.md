@@ -548,3 +548,20 @@ Keep this section honest — dated entries only, from real runs.
   usage limit every day of 2026-07-20..24, so every role - including the
   executor placing live orders - had been running on the fallback leg; that
   leg is now the newer model rather than Opus 4.8.
+- **2026-07-24 (evening)** - **VZ #32 reconciled and closed; the whole-share
+  size bug quantified.** Decision #32 sat `open_live` for a day after its exit
+  had already filled, because the morning executor returned before the 9:30
+  cross without calling `report_live_close` (Bug A, fixed same day in
+  be18f17). Broker ground truth: buy order 6a627044 filled 1.000000 sh
+  @43.8199, sell order 6a6277ec filled 1.000000 sh @44.31 in the 07-24
+  auction. Before closing, `size_usd` was corrected 81.39 -> 43.8199: the
+  stored value was the REQUESTED dollars, but the whole-share rule floors
+  `$81.39/ask` to 1 share, leaving ~$37 undeployed - the executor's own
+  exec_detail had already noted this and had no field to record it (Bug B,
+  fixed the same day by adding `filled_notional`). Closing on the uncorrected
+  size would have booked +$0.91 instead of the true **+$0.4901** (+1.12%), an
+  86% overstatement on a live row. This is a correction TO broker truth, not a
+  backfill: the decision (VZ long_equity), its thesis, features and policy
+  version are untouched. Verified same evening that the fix works forward:
+  HOPE #38 requested $30, filled 2 sh @13.4993, and stored exactly $27.00 via
+  `filled_notional`.

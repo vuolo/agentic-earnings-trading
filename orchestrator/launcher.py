@@ -34,7 +34,7 @@ DEFAULT_MODEL = "claude-fable-5"
 # limit ("You've reached your Fable 5 limit") is NOT caught by that flag and
 # exits 1 with the message on stdout, so run_role detects it and re-runs on the
 # fallback itself. See _USAGE_LIMIT_RE and the model-chain loop below.
-FALLBACK_MODEL = "claude-opus-4-8"
+FALLBACK_MODEL = "claude-opus-5"
 
 # Signature of a per-account usage/quota exhaustion on stdout (exit 1). Distinct
 # from server overload (which --fallback-model handles automatically mid-stream).

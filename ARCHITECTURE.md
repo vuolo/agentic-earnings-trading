@@ -81,7 +81,7 @@ The system is designed to run, learn, and trade autonomously:
 ```
 orchestrator/daily.py (phased tick) · main.py (operator CLI) · schedule.py (launchd)
    │  temp MCP config + per-role tool allowlist + mission (+ POLICY.md [+ PLAYBOOK.md])
-   │  Fable 5 default (fallback Opus 4.8); monitor + clerical on Sonnet 5; 22-min timeout/run
+   │  Fable 5 default (fallback Opus 5); monitor + clerical on Sonnet 5; 22-min timeout/run
    ▼
 claude -p  (headless Claude Code, per-role mission prompt)
    │
@@ -536,3 +536,15 @@ Keep this section honest — dated entries only, from real runs.
   writers. Validation: defanged evening --dry-run fired twice clean under
   real launchd (RunAtLoad + kickstart, empty stderr), then a REAL
   RunAtLoad evening fire exited 0 with the correct no-op.
+- **2026-07-24** - **Fallback model migrated to Opus 5** (`claude-opus-5`).
+  Verified before switching: a bogus model ID errors out ("may not exist or
+  you may not have access"), while `claude-opus-5` returns clean output and
+  self-identifies, so the CLI genuinely resolves it; and it booted the
+  earnings gateway over the real MCP config, called `get_context_pack`, and
+  read back policy v0.8.4 (the `gateway_last_boot` stamp advanced, ruling out
+  the tool-less-run failure mode). DEFAULT_MODEL stays `claude-fable-5`;
+  only FALLBACK_MODEL changed, so the launchd plist (which passes
+  `--model claude-fable-5`) needed no reinstall. Motivation: Fable 5 hit its
+  usage limit every day of 2026-07-20..24, so every role - including the
+  executor placing live orders - had been running on the fallback leg; that
+  leg is now the newer model rather than Opus 4.8.

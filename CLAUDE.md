@@ -6,7 +6,7 @@ design; this file is the fast orientation.
 
 ## The 30-second orientation
 
-Headless agent runs (`claude -p`, Fable 5 default with Opus 4.8 fallback /
+Headless agent runs (`claude -p`, Fable 5 default with Opus 5 fallback /
 Sonnet for clerical roles) analyze earnings events using read-only Robinhood MCP tools and act
 through a **local gateway MCP server** whose **server-side risk gate** has the
 final word. Everything — decisions with full feature snapshots, outcomes,

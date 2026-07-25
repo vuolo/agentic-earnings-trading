@@ -1,7 +1,37 @@
 # Trading Policy
 
-Version: 0.8.4
+Version: 0.8.5
 Mode: live when the operator's arm switch is active; paper otherwise
+
+v0.8.5 (strategist review, 2026-07-25, n=27 labeled events, 3 new closed
+LIVE trades since v0.8.4): the long side is no longer 0-for-N. #32 VZ
+(+1.12%, +$0.49), #36 NEM (-1.22%, -$0.55) and #37 EW (+5.61%, +$1.86) are
+the first longs since the 0-for-4 batch and went 2-1 for net +$1.80, against
+-$14.80 across the first four. All three were labeled off REAL BROKER
+AUCTION FILLS (2026-07-24 09:30:01-09:30:21 ET: 44.31, 93.04, 88.00), so the
+v0.8.4 label-of-record standard is VERIFIED on the live path; paper legs
+still take a ~09:33 quote, so live and paper P&L are not directly
+comparable. All three theses explicitly REFUSED an off-high bearish lean
+under the v0.8.2/0.8.3 location rule and took a small long instead - the
+bearish leg would have LOST on VZ and EW and won only 1.22% on NEM. Five
+PATCH refinements, no rule flips and no cap changes: (1) a LONG template
+(iii) is documented at exploration size and conviction <= 0.55 - no concrete
+negative forward catalyst in the flow, PLUS a fresh same-sector tell
+(#32 VZ took its direction from T's +4.27% gap, i.e. our own #22 loss became
+the tell), a ONE-SIGNED event history (#37 EW), or a named company-specific
+forward driver; (2) #36 NEM is the counterexample and the caution - a MACRO
+or commodity driver (gold at record highs) is NOT company-specific, because
+the print reprices production and costs rather than the commodity, and it
+was the batch's only loss; (3) #37 EW is the first labeled test of a
+UNANIMOUS n=6 gap history (6/6 up, worst gap still +1.2%) and it won
++5.61% - recorded as an OPEN HYPOTHESIS only, the 0.60 weak-basis cap stands
+at n=1 and EW's conviction was correctly held at 0.53; (4) the 0.35-0.50 ML
+band is noise a third time (#32 VZ 0.413 -> UP, #36 NEM 0.444 -> DOWN,
+#37 EW 0.476 -> UP); (5) two sizing biases are now documented in both
+directions - whole-share flooring cut #32 VZ from an $81.39 decision to
+$43.82 deployed, and a hot distant-monthly implied UNDER-sized the batch's
+biggest winner (#37 EW got $33.14 off a 29-DTE 10.11% implied against a
+5.61% realized move and a +1.2% worst historical gap). max() stays.
 
 v0.8.4 (strategist review, 2026-07-24, n=24 labeled events, 1 new closed
 trade + 2 passes since v0.8.3): the headline finding is a MEASUREMENT bug,
@@ -36,8 +66,8 @@ now 0-for-4 with one flat on an auction basis (#22 T, #24 EQT, #28 KMI,
 #33 NEE wrong; #29 ELS flat). Template-era bearish paper is 10-1-3 net
 +$9.54 as labeled, but at minimum 9-1-4 and about $4.75 lower on an
 auction basis - the templates still work, the scoreboard was generous.
-Longs remain 0-for-4 with #32 VZ, #36 NEM and #37 EW pending labels; no
-long rule changed on zero new evidence.
+Longs were 0-for-4 at that review with #32 VZ, #36 NEM and #37 EW pending
+labels; see v0.8.5 for how those three landed.
 
 v0.8.3 (strategist review, 2026-07-23, n=21 labeled events, 3 new closed
 trades + 1 pass since v0.8.2): the location story sharpens into a
@@ -209,17 +239,19 @@ marked (server) MUST be tool outputs embedded verbatim — never hand-computed:
    implied 10.16% on a 35-DTE straddle vs 5.37% realized; #18 KEY 6.98% vs
    1.64%). A 2-3 DTE weekly with fine strikes is the best available
    estimate (#22 T implied 5.19% vs 4.27% realized, #24 EQT 4.2% vs 2.04%,
-   #23 NLY 2.45% vs 1.21%, #30 AAL a fine 1-DTE weekly 6.31% vs 6.85%),
-   while distant monthlies still run hot (#25 ONB 30-DTE 10.8% vs 1.03%;
-   #29 ELS 30-DTE 6.12% vs 1.58% mean). **But implied is NOT an upper
-   bound (v0.8.4)**: #35 SLB's fine 1-DTE weekly said 3.01% and the stock
-   gapped +6.14% on a live oil-shock catalyst, breaching implied AND the
-   +2.58% best historical gap - the first tail breach where max() was not
-   conservative. The opposite extreme is just as real on high-vol names:
-   #34 INTC's liquid chain implied 12.36% against a 0.58% realized move,
-   ~20x. Read implied as a DISPERSION estimate, never as a forecast or a
-   worst case; a named catalyst can carry the move past it. Sizing still
-   uses max() - it is the better of two imperfect numbers.
+   #23 NLY 2.45% vs 1.21%, #30 AAL a fine 1-DTE weekly 6.31% vs 6.85%,
+   #32 VZ 1-DTE 3.58% vs 1.12%, #36 NEM 1-DTE 5.08% vs 1.22%), while
+   distant monthlies still run hot (#25 ONB 30-DTE 10.8% vs 1.03%;
+   #29 ELS 30-DTE 6.12% vs 1.58% mean; #37 EW 29-DTE 10.11% vs 5.61%).
+   **But implied is NOT an upper bound (v0.8.4)**: #35 SLB's fine 1-DTE
+   weekly said 3.01% and the stock gapped +6.14% on a live oil-shock
+   catalyst, breaching implied AND the +2.58% best historical gap - the
+   first tail breach where max() was not conservative. The opposite extreme
+   is just as real on high-vol names: #34 INTC's liquid chain implied
+   12.36% against a 0.58% realized move, ~20x. Read implied as a DISPERSION
+   estimate, never as a forecast or a worst case; a named catalyst can carry
+   the move past it. Sizing still uses max() - it is the better of two
+   imperfect numbers.
 2. **computed** (server) — `compute_indicators` over ~3 months of daily bars:
    rsi14, atr14_pct, realized_vol20_pct, volume_z20, sma trend, distance from
    high/low, relative strength vs. benchmark.
@@ -235,27 +267,37 @@ marked (server) MUST be tool outputs embedded verbatim — never hand-computed:
    breached in #35 SLB (3.01% on a clean 1-DTE weekly). Both estimates can
    fail together when a live catalyst is in play - size accordingly.
 4. **historical_reactions** — last 8 quarters where available: day-after move
-   % per report, beat/miss record, direction consistency.
+   % per report, beat/miss record, direction consistency. Note explicitly
+   whether the observed gap sample is ONE-SIGNED (every gap the same
+   direction, the worst one still favorable) - #37 EW was 6/6 up with a
+   +1.2% worst gap and gapped +5.61%, and that is a different object from a
+   4/6 or 5/6 up_rate (v0.8.5, open hypothesis, n=1 - it does NOT lift the
+   0.60 weak-basis cap).
 5. **valuation_context** — P/E, market cap; note extremes.
 6. **sentiment** — WebSearch recent news: bullish/bearish/mixed with 2-3
    cited headlines. Note any macro_watch reports in the same week (correlated
-   AI-complex risk).
+   AI-complex risk). Note also whether a direct SECTOR COMP has already
+   printed this week and how it gapped - #32 VZ sourced its long direction
+   from T's +4.27% gap two days earlier on the identical narrative and won
+   (v0.8.5); the bearish mirror won twice (UAL -> AAL on the fuel shock).
 7. **ml_advisory** (server) — `get_ml_prediction` output, recorded on every
-   decision. The sidecar is above base rate (154 rows, CV 55% vs 48%) and
+   decision. The sidecar is above base rate (157 rows, CV 53% vs 48%) and
    its confident down-band (prob_up < 0.35) is 8-for-12 directionally
-   through 7/24 (right: #11 DX 0.267, #13 RYAAY 0.244, #17 AGNC 0.264,
+   through 7/25 (right: #11 DX 0.267, #13 RYAAY 0.244, #17 AGNC 0.264,
    #18 KEY 0.315, #20 SCHW 0.277, #23 NLY 0.175, #25 ONB 0.213, #29 ELS
    0.287; wrong: #22 T 0.229, #24 EQT 0.199, #21 WBS 0.215 counterfactual,
    #28 KMI 0.289). Its two deepest reads ever (0.175 and 0.199) split one
    right one wrong - depth adds no calibration (v0.8.2), and #28/#29 (both
    ~0.288, split) confirm the band is corroboration, not a catalyst.
-   **Reads between 0.35 and 0.50 are NOT corroboration for a bearish lean
-   (v0.8.4)**: #33 NEE cited prob_up 0.425 as an "above base rate" bearish
-   leg and the stock printed UP at the auction; #34 INTC 0.551 and #35 SLB
-   0.463 were correctly treated as neutral. Only the <0.35 band counts, and
-   even then it may corroborate a lean and temper conviction - it never
-   satisfies the entry rules by itself, never overrides them, and never
-   lifts conviction past the 0.60 weak-basis cap - it is trained on the same
+   **Reads between 0.35 and 0.50 are NOT corroboration in either direction
+   (v0.8.4, reconfirmed v0.8.5)**: #33 NEE cited prob_up 0.425 as an "above
+   base rate" bearish leg and the stock printed UP at the auction, and the
+   three v0.8.5 longs split with no signal (#32 VZ 0.413 -> UP, #36 NEM
+   0.444 -> DOWN, #37 EW 0.476 -> UP); #34 INTC 0.551 and #35 SLB 0.463
+   were correctly treated as neutral. Only the <0.35 band counts, and even
+   then it may corroborate a lean and temper conviction - it never satisfies
+   the entry rules by itself, never overrides them, and never lifts
+   conviction past the 0.60 weak-basis cap - it is trained on the same
    small, down-heavy sample it is predicting.
 8. **event** — report_date, timing (bmo/amc), source of that date, and
    (v0.8.2) whether a second source confirms it: #12 WBS and #15 FERG were
@@ -295,7 +337,7 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   surge (Brent >$100, 5th straight up session) and discounting it as
   double-edged and transient; SLB gapped +6.14%, the largest move in the
   labeled pass set (labeled passes otherwise average 1.50% absolute move
-  versus 3.58% for trades, so the pass filter itself stays intact and is
+  versus 3.46% for trades, so the pass filter itself stays intact and is
   NOT loosened). Floor size caps the cost of being wrong about an
   ambiguous catalyst: #31 NOK's stated floor-size long lean would have lost
   1.17%, which is exactly the scale of downside this rule accepts. On
@@ -307,19 +349,22 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
     bearish paper legs are participation too).
   - Shorts use the backtest's BEST gap (upside tail) as the historical input
     to the risk check — a short's worst case is the stock gapping UP.
-- **Live calibration caution (v0.7.2, updated v0.8.4 — do NOT flip the
-  default)**: through n=24 labeled events, most moved down or flat at the
+- **Live calibration caution (v0.7.2, updated v0.8.5 — do NOT flip the
+  default)**: through n=27 labeled events, most moved down or flat at the
   exit, but the down-tape has faded (#22 T +4.27%, #24 EQT +2.04%, #28 KMI
-  +0.60%, #35 SLB +6.14%, #33 NEE +0.57% at the auction, #21 WBS +1.0%
-  counterfactual all UP) - so direction must come from a template, never
-  from a "down-tape" prior. Longs remain 0-for-4 (#27 PNFP exec_failed;
-  #32 VZ, #36 NEM, #37 EW entered 7/23 and are not yet labeled).
+  +0.60%, #35 SLB +6.14%, #33 NEE +0.57% at the auction, #37 EW +5.61%,
+  #21 WBS +1.0% counterfactual all UP) - so direction must come from a
+  template, never from a "down-tape" prior. Longs are now 2-for-7 lifetime:
+  0-for-4 on the first batch (-$14.80, all backward-looking legs) and 2-1
+  for net +$1.80 on the template-era batch (#32 VZ +1.12% +$0.49, #37 EW
+  +5.61% +$1.86, #36 NEM -1.22% -$0.55) - see template (iii).
   Template-era bearish paper is 10-1-3 net +$9.54 AS LABELED, but the
   labels credit post-open fade the auction exit does not capture (v0.8.4):
   on an auction basis it is at minimum 9-1-4 and roughly $4.75 lower.
-  Read the scoreboard with that discount until pre-0.8.4 labels are
-  re-measured. Two direction-sourcing templates are validated at
-  exploration size:
+  Paper legs are still labeled off a ~09:33 quote while the three v0.8.5
+  live longs were labeled off REAL AUCTION FILLS - do not compare paper and
+  live P&L directly, and discount the paper scoreboard. Three
+  direction-sourcing templates are validated at exploration size:
   (i) **concrete negative forward catalyst** — validated 3-for-3: #7 CAG
   (imminent dividend cut, -2.54%), #8 UAL (jet fuel surged above
   management's cost assumption, -3.07%), #30 AAL (same June fuel shock
@@ -332,8 +377,7 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   distance-from-high. A concrete forward catalyst plus a tape sliding DOWN
   into the print overrides the near-high requirement of template (ii); a
   catalyst-less bearish lean into UP momentum off a low is the failure mode
-  (T, EQT). The mirror holds for LONGS: a live catalyst pushing the tape UP
-  is a reason to participate small on the long side, not to pass (#35 SLB).
+  (T, EQT).
   (ii) **high-bar asymmetry lean, conviction ≤ 0.55, ONLY on a name
   EXTENDED NEAR ITS 52-WEEK HIGH (~4%, v0.8.2)** — an elevated consensus
   bar into an extended tape where the name's own precedent shows good news
@@ -353,9 +397,26 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   correctly called itself no-edge and still deployed $100.82), and on a
   crowded calendar do NOT spend a scarce slot on a mid-range asymmetry
   lean (#31 NOK was a forced pass on 5/5 full slots). The asymmetry lean
-  is NOT a catalyst — it never lifts conviction past 0.55. A long still
-  requires a named CONCRETE FORWARD catalyst in the thesis; "cheap / beats
-  / momentum" is not one — see the cap below.
+  is NOT a catalyst — it never lifts conviction past 0.55.
+  (iii) **LONG mirror, conviction ≤ 0.55, exploration size (v0.8.5)** —
+  when a name is OFF its high with NO concrete negative forward catalyst in
+  the flow, the correct expression is a SMALL LONG, not a bearish lean.
+  Requires BOTH: (1) no concrete negative forward catalyst (bullish or
+  neutral news flow, no guidance cut, no negative estimate revision), and
+  (2) at least one of - a FRESH SAME-SECTOR TELL from a comparable that
+  just printed (#32 VZ took direction from T's +4.27% gap two days earlier
+  on the identical Starlink/broadband narrative: +1.12%, +$0.49), a
+  ONE-SIGNED event history (#37 EW 6/6 up gaps with the worst still +1.2%,
+  entering oversold at -11.4% off its high with an unchanged bar and fresh
+  target raises: +5.61%, +$1.86), or a NAMED COMPANY-SPECIFIC forward
+  driver. **A MACRO or COMMODITY driver does not qualify as (2)**: #36 NEM
+  sourced its long from gold at record highs and lost 1.22% - the print
+  reprices company items (production -10.9% YoY, costs), not the commodity,
+  so a macro driver is at best a tiebreaker. This template does NOT lift
+  any cap: a long still requires a named CONCRETE FORWARD catalyst to
+  exceed 0.60, and "cheap / beats / momentum" is never one (the 0-for-4
+  batch). Its whole value is that it converts the documented off-template
+  bearish failure mode into a small, correctly-signed participation.
 - **Conviction cap on weak-basis leans (v0.7.1, tightened v0.7.2)**: cap
   conviction at **0.60** whenever your directional lean rests primarily on
   either (a) the backtest's gap direction (`up_rate` or the sign of
@@ -371,8 +432,11 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   DOWN-catalysts (v0.8.2: #22 T, #24 EQT). To exceed 0.60, the
   corroborating leg must be a CONCRETE FORWARD catalyst (a specific
   guidance signal, a pending event, product/sector news) or a per-symbol
-  playbook line — never those backward-looking legs alone. This caps SIZE,
-  never participation — trade anyway, smaller.
+  playbook line — never those backward-looking legs alone. The cap holds
+  for a ONE-SIGNED n=6 history too (v0.8.5): #37 EW's 6/6-up sample won
+  +5.61% at conviction 0.53, which is one event, not a licence - record the
+  observation and stay capped. This caps SIZE, never participation — trade
+  anyway, smaller.
 
 ## Sizing (v0.8.0 — SERVER-COMPUTED, equity-breathing)
 
@@ -387,13 +451,14 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   own thesis called it "mid-range NO-EDGE zone" at conviction 0.45 - became
   a $100.82 position (adverse 2.89%), the largest of its batch, and how
   #28 KMI became $102.60. Both were wrong at the auction print. When your
-  lean satisfies NEITHER template (i) (concrete negative forward catalyst
-  with the tape sliding down) NOR template (ii) (high-bar asymmetry within
-  ~4% of the 52-week high), submit the $20-40 floor with the stated reason
-  "off-template, no documented edge" - the dataset gets its row, the T+1
-  buying power stays free for template setups, and the position is sized to
-  the information, not to the risk budget. The same floor applies to the
-  ambiguous-catalyst leg under disqualifier (a) above.
+  lean satisfies NONE of template (i) (concrete negative forward catalyst
+  with the tape sliding down), template (ii) (high-bar asymmetry within
+  ~4% of the 52-week high) or template (iii) (the long mirror), submit the
+  $20-40 floor with the stated reason "off-template, no documented edge" -
+  the dataset gets its row, the T+1 buying power stays free for template
+  setups, and the position is sized to the information, not to the risk
+  budget. The same floor applies to the ambiguous-catalyst leg under
+  disqualifier (a) above.
 - `adverse_move_pct = max(implied_move_pct, |historical gap tail|)` — the
   v0.7.1 rule, unchanged: the tail is the WORST gap for longs, the BEST gap
   for bearish legs; with n ≤ 6 the historical extreme is biased low and the
@@ -401,10 +466,14 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   (#22 T realized +4.27% vs best-gap +3.43%, covered by the 2-DTE implied
   5.19%). In the 5th (#35 SLB) BOTH were breached - a 1-DTE implied 3.01%
   and a +2.58% best gap against a +6.14% realized move - so max() is the
-  better of two imperfect numbers, not a worst case. (On sparse
-  screened-name chains implied can also OVERSTATE the event move badly, up
-  to ~20x on #34 INTC — see snapshot component 1 — but max() stays: that
-  bias only shrinks size.)
+  better of two imperfect numbers, not a worst case. **The bias runs both
+  ways and BOTH are now documented (v0.8.5)**: a hot distant-monthly
+  implied UNDER-sizes exactly the setups with the cleanest history -
+  #37 EW, the biggest percentage winner in the book's long column, drew the
+  batch's smallest size ($33.14) because a 29-DTE straddle implied 10.11%
+  against a 5.61% realized move while its own worst historical gap was
+  +1.2%. max() STAYS (five tail breaches earn the conservatism); note the
+  distortion in the thesis rather than working around it.
 - What the server does (so you can sanity-check, not recompute): risk 1% of
   CURRENT equity at conviction 0.5, rising ~0.5%/0.1 conviction to a 3%
   ceiling; size = risk / adverse_move; haircuts non-core x0.75 and
@@ -418,6 +487,14 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   fill on a wild name is exactly the evidence the dataset wants.
 - The daily budget and per-position arm cap are enforced by the gate
   regardless — the tool mirrors them so an honest submission never bounces.
+- **Whole-share flooring can halve your deployed size (v0.8.5).** The
+  executor prefers whole shares when the price fits, because only whole
+  shares can exit after-hours: #32 VZ's $81.39 decision became ONE share at
+  $43.8199, i.e. 46% of the intended notional, and the label/P&L were
+  reconciled to the real fill. On a name priced above roughly half your
+  size, expect the deployed amount to round down hard - that is correct
+  behaviour, not an error, but say so in the thesis so the P&L is read
+  against the size actually at risk.
 - **T+1 capital cycle (verified live 2026-07-05)**: this cash account
   EXCLUDES sale proceeds from buying power until the next trading day —
   this morning's exit cannot fund this afternoon's entry. Practical model:
@@ -453,21 +530,21 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   ANCHORED exits (print+5/15/30m, premarket 07:20/08:00) across all 52
   Apr–Jul events: anchored exits lose 1.2–2.5%/event on AMC, wash on BMO
   ex-outlier, unexecutable on a third of the slate — the auction stands.
-- **The AUCTION PRINT is the label of record (v0.8.4).** An outcome label
-  must measure the 09:30 opening print, because that is the price the
-  strategy actually gets; a later fresh quote (09:33-09:36) is drift the
-  exit never captured and belongs in the notes as a secondary number, not
-  as the outcome. The bias is systematic and one-signed, because the
-  post-open fade flatters short legs: in the four recent paper legs whose
-  notes record both, #33 NEE opened 90.655 against a 90.145 entry (+0.57%,
-  a LOSS) yet was labeled -1.64% (+$1.65) off the 09:34 quote after a
-  four-minute fade; #28 KMI opened 33.00 (+1.77%) and was labeled +0.60%;
-  #29 ELS opened 65.52 (+0.11%) and was labeled -0.27%; #30 AAL opened
-  14.00 (-4.99%) and was labeled -6.85%. Labeled P&L across those four is
-  +$5.12 versus about +$0.37 on an auction basis. When you cite a labeled
-  outcome in a thesis or a review, prefer the auction figure where the note
-  records it, and treat pre-0.8.4 bearish P&L as generous. If both prints
-  are available, state both.
+- **The AUCTION PRINT is the label of record (v0.8.4), and the LIVE path now
+  meets that standard (v0.8.5).** #32 VZ, #36 NEM and #37 EW were labeled
+  off real broker auction fills (2026-07-24 09:30:01-09:30:21 ET at 44.31,
+  93.04 and 88.00), which is the price the strategy actually got. PAPER
+  legs are still labeled from a fresh quote at ~09:33-09:36, and that bias
+  is systematic and one-signed because the post-open fade flatters short
+  legs: #33 NEE opened 90.655 against a 90.145 entry (+0.57%, a LOSS) yet
+  was labeled -1.64% (+$1.65) off the 09:34 quote; #28 KMI opened 33.00
+  (+1.77%) and was labeled +0.60%; #29 ELS opened 65.52 (+0.11%) and was
+  labeled -0.27%; #30 AAL opened 14.00 (-4.99%) and was labeled -6.85%.
+  Labeled P&L across those four is +$5.12 versus about +$0.37 on an auction
+  basis. When you cite a labeled outcome in a thesis or a review, prefer the
+  auction figure where the note records it, treat pre-0.8.4 bearish P&L as
+  generous, and do NOT compare paper P&L directly against live P&L. If both
+  prints are available, state both.
 - **Paper legs follow the SAME exit windows as live positions (v0.8.1).**
   A `bearish_option` or any other paper leg is closed by the morning tick at
   the post-report open, exactly like a live fill — its label must measure

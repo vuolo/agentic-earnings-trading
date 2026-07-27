@@ -38,6 +38,10 @@ from engine.store import Store
 from . import launcher
 
 STRATEGIST_MIN_NEW_OUTCOMES = 3
+# Ceiling on the Monday realized-backtest refresh. One agent run has a 22-min
+# hard timeout; an unbounded list silently blows it (295 symbols -> exit 124,
+# 2026-07-27) and refreshes nothing at all.
+BACKTEST_REFRESH_MAX = 40
 
 # Afternoon entry clock (local wall clock = ET on this host). The window is
 # hard: orders must be PLACED inside the policy's 15:45-15:58 entry window.
@@ -208,6 +212,56 @@ def _analyst_job(db_path, event_id: int, symbol: str, model: str | None) -> tupl
     return rc, False
 
 
+def _reconcile_live_fills(store: Store, *, arm, arm_why: str, today: date,
+                          model: str | None) -> None:
+    """Report auction fills for positions the pre-open run couldn't close.
+
+    Runs late in the morning tick, after the auction. Launches the executor
+    with a REPORT-ONLY job (it reads get_equity_orders and calls
+    report_live_close for exits that already filled), then re-checks. Anything
+    still open_live afterwards is a genuine unfilled exit or a broken run:
+    that sets `exit_reconcile_needed` and notifies, because a live position
+    riding unhedged is the one failure that must never be silent.
+    """
+    due = store.due_live_closes(today.isoformat())
+    if not due:
+        store.meta_set("exit_reconcile_needed", "")
+        print("reconcile: no live exits outstanding")
+        return
+    ids = ", ".join(f"#{r['id']} {r['symbol']}" for r in due)
+    if not arm:
+        print(f"reconcile: {len(due)} position(s) unreported but {arm_why} "
+              "— MANUAL ACTION NEEDED (positions are real)")
+        store.meta_set("exit_reconcile_needed", ids)
+        _notify(f"earnings: live exits unreported and {arm_why}: {ids}"[:120])
+        return
+
+    job = ("RECONCILE FILLS ONLY (the opening auction has passed; place no new "
+           "orders unless a position has NO close order at all) — for each: "
+           "get_equity_orders, and if its close order shows filled, "
+           "report_live_close with the actual average fill price "
+           "(decision_id symbol action): "
+           + ", ".join(f"#{r['id']} {r['symbol']} {r['action']}" for r in due))
+    print(f"reconcile executor (ARMED until {arm.expires}): {ids}")
+    print(f"reconcile executor exit "
+          f"{_run_with_evidence(store, 'executor', symbol=job, model=model)}")
+
+    still = store.due_live_closes(today.isoformat())
+    if still:
+        left = ", ".join(f"#{r['id']} {r['symbol']}" for r in still)
+        msg = (f"live exits STILL unreported after reconcile: {left} — either "
+               "the exit never filled (position is riding unhedged) or the "
+               "report failed; needs manual reconciliation")
+        print(f"reconcile: ⚠ {msg}")
+        # Dedicated key: tick() clears last_tick_error on a clean phase, so it
+        # cannot carry this. Persists until a later run records the fills.
+        store.meta_set("exit_reconcile_needed", left)
+        _notify(f"earnings: {msg[:120]}")
+    else:
+        store.meta_set("exit_reconcile_needed", "")
+        print("reconcile: all live exits recorded")
+
+
 def _write_briefing(cfg: Config, store: Store) -> None:
     """Regenerate the operator briefing and commit it (best-effort)."""
     import subprocess
@@ -314,30 +368,6 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                 print(f"executor (ARMED until {arm.expires}): {job}")
                 if not dry_run:
                     print(f"executor exit {_run_with_evidence(store, 'executor', symbol=job, model=model)}")
-                    # Backstop: the executor must not end a morning close run
-                    # with an assigned position still open_live — that means it
-                    # exited before the 9:30 cross without recording the fill
-                    # (proven 2026-07-24: VZ/NEM/EW exits filled at the auction
-                    # but were never report_live_close'd; the tick reported
-                    # success while 3 positions rode as phantom-open). Convert
-                    # that silent gap into a loud, same-run failure so the
-                    # operator/monitor reconciles instead of discovering it days
-                    # later. We cannot auto-close (broker access is agent-only),
-                    # but we refuse to report the tick clean.
-                    still_open = store.due_live_closes(today.isoformat())
-                    if still_open:
-                        ids = ", ".join(f"#{r['id']} {r['symbol']}" for r in still_open)
-                        msg = (f"morning exits NOT recorded for {ids} — executor "
-                               "returned with positions still open_live (fill "
-                               "unreported or exit unfilled); needs reconciliation")
-                        print(f"executor: ⚠ {msg}")
-                        # Dedicated key (tick() clears last_tick_error on a
-                        # clean phase, so it can't carry this): persists until a
-                        # later exit run records the fills. _notify is immediate.
-                        store.meta_set("exit_reconcile_needed", ids)
-                        _notify(f"earnings: {msg[:120]}")
-                    else:
-                        store.meta_set("exit_reconcile_needed", "")
             elif live_closes:
                 print(f"executor: {len(live_closes)} live close(s) due but {arm_why} "
                       "— MANUAL ACTION NEEDED (positions are real)")
@@ -356,19 +386,30 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                     print(f"scout exit {_run_with_evidence(store, 'scout', model=model)}")
 
             # Monday: refresh backtests for events that just happened, so the
-            # realized rows (incl. post_close) stay complete.
+            # realized rows (incl. post_close) stay complete. Scoped to symbols
+            # we actually DECIDED on: those are the rows that feed training,
+            # the playbook and the strategist. Since the v0.6.0 market-wide
+            # expansion the unscoped query returned every calendar name (295 on
+            # 2026-07-27), which no single 22-min run can process — it timed
+            # out at exit 124, refreshed nothing, and ate the tick's clock.
             if today.weekday() == 0:
                 week_ago = (today - timedelta(days=7)).isoformat()
                 recent = store._db.execute(
-                    "SELECT DISTINCT symbol FROM events WHERE report_date >= ? "
-                    "AND report_date < ?", (week_ago, today.isoformat()),
+                    """SELECT DISTINCT e.symbol FROM events e
+                       JOIN decisions d ON d.event_id = e.id
+                       WHERE e.report_date >= ? AND e.report_date < ?
+                       ORDER BY e.symbol""",
+                    (week_ago, today.isoformat()),
                 ).fetchall()
-                if recent:
-                    syms = ", ".join(r["symbol"] for r in recent)
+                syms_list = [r["symbol"] for r in recent][:BACKTEST_REFRESH_MAX]
+                if syms_list:
+                    syms = ", ".join(syms_list)
                     print(f"backtester: refreshing realized events for {syms}")
                     if not dry_run:
                         print(f"backtester exit "
                               f"{_run_with_evidence(store, 'backtester', symbol=syms, model=model)}")
+                else:
+                    print("backtester: no decided events in the past week — skip")
 
             due = store.due_closes(today.isoformat())
             passes = store.due_pass_labels(today.isoformat())
@@ -397,6 +438,21 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
             else:
                 print(f"strategist: {n - last} new outcomes since last review "
                       f"(<{STRATEGIST_MIN_NEW_OUTCOMES}) — skip")
+
+            # FILL RECONCILIATION — deterministic, and deliberately LAST.
+            # The 9:24 executor runs pre-open: it can place/verify the exit
+            # order but cannot report a fill that hasn't happened yet. Asking
+            # the agent to block until 9:31 does NOT work: on 2026-07-27 it
+            # announced "Timer running; I'll poll once it fires just past 9:31"
+            # and the run ended anyway, leaving HOPE/AZN phantom-open exactly
+            # like VZ/NEM/EW on 07-24. A `claude -p` run cannot be relied on to
+            # sleep for minutes. So the orchestrator owns the timing instead:
+            # by the time monitor/scout/labeler/strategist have run, the
+            # auction is long past, and THIS run only has to read
+            # get_equity_orders and report what already filled.
+            if not dry_run:
+                _reconcile_live_fills(store, arm=arm, arm_why=arm_why,
+                                      today=today, model=model)
 
             if dry_run:
                 print("ml: would attempt training (auto-activates at threshold)")

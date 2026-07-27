@@ -134,3 +134,81 @@ def test_performance_summary_shapes(store):
     assert summary["closed_trades"] == 1
     assert summary["wins"] == 1
     assert summary["total_pnl_usd"] == pytest.approx(20.0)
+
+
+# -- morning fill reconciliation (regression: phantom-open positions) --------
+# Twice now the pre-open executor left filled exits unreported (VZ/NEM/EW
+# 2026-07-24, HOPE/AZN 2026-07-27), because a `claude -p` run cannot block
+# until the 9:30 cross. The orchestrator now owns that timing via a late
+# reconcile pass. These pin the seam.
+
+def _open_live(store, symbol, report_date, timing="bmo"):
+    event_id = store.upsert_event(symbol, report_date, timing)
+    did = store.insert_decision(
+        symbol=symbol, action="long_equity", policy_version="t",
+        risk_verdict="approved", status="pending_live",
+        size_usd=100.0, entry_price=50.0, event_id=event_id)
+    store.mark_execution(did, filled=True, fill_price=50.0)
+    return did
+
+
+def test_reconcile_reports_fills_and_clears_flag(store, monkeypatch):
+    from datetime import date
+    from orchestrator import daily
+    did = _open_live(store, "HOPE", "2026-07-27")
+    today = date(2026, 7, 27)
+    assert [r["id"] for r in store.due_live_closes(today.isoformat())] == [did]
+
+    # Simulate the reconcile executor doing its job: recording the real fill.
+    def fake_run(store_, role, *, symbol=None, model=None):
+        store_.close_live(did, 55.0, "auction fill")
+        return 0
+    monkeypatch.setattr(daily, "_run_with_evidence", fake_run)
+    notes = []
+    monkeypatch.setattr(daily, "_notify", lambda m: notes.append(m))
+
+    arm = type("A", (), {"expires": "2026-08-04"})()
+    daily._reconcile_live_fills(store, arm=arm, arm_why="", today=today, model=None)
+
+    assert store.get_decision(did)["status"] == "closed_live"
+    assert store.meta_get("exit_reconcile_needed") == ""
+    assert notes == []  # healthy path must not notify
+
+
+def test_reconcile_flags_and_notifies_when_still_unreported(store, monkeypatch):
+    from datetime import date
+    from orchestrator import daily
+    did = _open_live(store, "AZN", "2026-07-27")
+    today = date(2026, 7, 27)
+
+    # The reconcile run fails to record anything (unfilled exit / broken run).
+    monkeypatch.setattr(daily, "_run_with_evidence",
+                        lambda store_, role, **kw: 0)
+    notes = []
+    monkeypatch.setattr(daily, "_notify", lambda m: notes.append(m))
+
+    arm = type("A", (), {"expires": "2026-08-04"})()
+    daily._reconcile_live_fills(store, arm=arm, arm_why="", today=today, model=None)
+
+    assert store.get_decision(did)["status"] == "open_live"
+    flag = store.meta_get("exit_reconcile_needed")
+    assert f"#{did}" in flag and "AZN" in flag
+    assert len(notes) == 1 and "unreported" in notes[0]
+
+
+def test_reconcile_disarmed_flags_without_running_executor(store, monkeypatch):
+    from datetime import date
+    from orchestrator import daily
+    did = _open_live(store, "NEM", "2026-07-27")
+    ran = []
+    monkeypatch.setattr(daily, "_run_with_evidence",
+                        lambda *a, **k: ran.append(1) or 0)
+    notes = []
+    monkeypatch.setattr(daily, "_notify", lambda m: notes.append(m))
+
+    daily._reconcile_live_fills(store, arm=None, arm_why="not armed",
+                                today=date(2026, 7, 27), model=None)
+
+    assert ran == []  # never launch an order-capable role while disarmed
+    assert f"#{did}" in store.meta_get("exit_reconcile_needed")
+    assert len(notes) == 1

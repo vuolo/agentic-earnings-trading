@@ -565,3 +565,32 @@ Keep this section honest — dated entries only, from real runs.
   version are untouched. Verified same evening that the fix works forward:
   HOPE #38 requested $30, filled 2 sh @13.4993, and stored exactly $27.00 via
   `filled_notional`.
+- **2026-07-27** - **Auction-fill reporting moved off the agent and into the
+  orchestrator; Monday backtest refresh unbounded.** Two findings from the
+  Monday tick. (1) The 07-24 prompt fix for unreported exits did NOT hold: the
+  pre-open executor announced "Timer running; I'll poll the orders once it
+  fires just past 9:31 ET" and the run exited 0 anyway, leaving HOPE #38 and
+  AZN #39 phantom-open exactly as VZ/NEM/EW were on 07-24. A `claude -p` run
+  ends when the agent stops calling tools, so ANY instruction to block for
+  minutes is structurally unreliable - the agent complied in intent and the
+  wait still never happened. Fix is architectural: the 9:24 run now only
+  places/verifies the resting close order and is told explicitly NOT to wait,
+  and a new deterministic `_reconcile_live_fills()` pass runs at the END of the
+  morning tick (after monitor/scout/labeler/strategist have burned the clock
+  well past the auction) launching a REPORT-ONLY executor job that reads
+  get_equity_orders and calls report_live_close for whatever filled. Anything
+  still open_live after that sets `exit_reconcile_needed` and notifies.
+  Verified live the same morning: the reconcile pass recorded HOPE @13.59
+  (+0.67%, +$0.18) and AZN @169.89 (+0.48%, +$0.19) from the broker's actual
+  fills and cleared the flag. (2) The Monday realized-backtest refresh selected
+  every calendar symbol in the trailing week - **295 names** post-v0.6.0
+  market-wide expansion - which no single 22-min run can process: it hit the
+  timeout (exit 124), refreshed nothing, and consumed the tick's clock. Now
+  scoped to symbols we actually hold decisions on (295 -> 25) and capped at
+  `BACKTEST_REFRESH_MAX = 40`.
+- **2026-07-27** - **gfd auction exits DO survive a weekend** (open question
+  from 07-24). HOPE and AZN close orders were placed Friday 07-24 20:22 UTC,
+  after the close, and filled Monday 07-27 13:30 UTC in the 9:30 opening
+  auction - two non-trading days later, no re-placement needed. The gtc->gfd
+  switch is therefore safe for Friday-entered BMO-Monday holds, not just
+  overnight ones.

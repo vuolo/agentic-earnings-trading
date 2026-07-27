@@ -183,3 +183,32 @@ def test_backtest_upsert_and_summary(store):
     assert gap["up_rate"] == pytest.approx(0.5)
     assert gap["worst_pct"] == pytest.approx(-2.0)
     assert store.backtest_events("NVDA")[0]["timing"] == "amc"
+
+
+def test_monday_backtest_refresh_is_scoped_to_decided_symbols(store):
+    # Regression: the unscoped query returned every calendar name (295 on
+    # 2026-07-27), blowing the 22-min agent timeout so nothing refreshed.
+    # Only symbols we decided on feed training/playbook, so only those matter.
+    from datetime import date, timedelta
+    from orchestrator.daily import BACKTEST_REFRESH_MAX
+    today = date(2026, 7, 27)          # a Monday
+    last_week = (today - timedelta(days=3)).isoformat()
+
+    decided = store.upsert_event("HOPE", last_week, "bmo")
+    store.insert_decision(symbol="HOPE", action="long_equity", policy_version="t",
+                          risk_verdict="approved", status="closed_live",
+                          size_usd=27.0, entry_price=13.5, event_id=decided)
+    for i in range(50):                # calendar noise, never decided on
+        store.upsert_event(f"NOI{i}", last_week, "bmo")
+
+    rows = store._db.execute(
+        """SELECT DISTINCT e.symbol FROM events e
+           JOIN decisions d ON d.event_id = e.id
+           WHERE e.report_date >= ? AND e.report_date < ?
+           ORDER BY e.symbol""",
+        ((today - timedelta(days=7)).isoformat(), today.isoformat()),
+    ).fetchall()
+    syms = [r["symbol"] for r in rows][:BACKTEST_REFRESH_MAX]
+
+    assert syms == ["HOPE"]                 # the 50 undecided names are excluded
+    assert len(syms) <= BACKTEST_REFRESH_MAX

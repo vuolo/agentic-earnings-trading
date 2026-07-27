@@ -91,18 +91,32 @@ Direction by the job's action: `long_equity` → SELL to close;
    placed pre-open it fills in the 9:30:00 opening cross at the auction
    print, exactly the price the backtests measure. (Fractional quantities
    queue fine on market + regular_hours orders.)
-3. **You OWN the fill report — do not end this run until every assigned
-   position is closed AND reported.** Whether you placed the order or the
-   evening run queued it, WAIT for the 9:30 cross (poll `get_equity_orders`
-   past 9:30:00 ET, re-polling every ~30-60s), and the moment each exit shows
-   `filled`, call `report_live_close(id, exit_price=<average fill>,
-   notes=...)`. Never exit the run leaving an assigned position still
-   open_live because "the order is resting" — the queued order filling but
-   never being reported is exactly the failure that left VZ/NEM/EW as
-   phantom-open on 2026-07-24. If an exit is genuinely still unfilled after
-   ~10 min of polling (halt, illiquid auction), say so explicitly in your
-   report and leave it open — but that is the ONLY reason to end with an
-   unreported position, and it must be stated, never silent.
+3. **Do NOT wait for the cross on this pre-open run.** Your job here ends once
+   every assigned position has a confirmed close order resting for the full
+   quantity. Report what you placed/verified and stop. Do not set a timer, do
+   not promise to poll later: the run ends when you stop calling tools, so a
+   promised wait silently becomes no wait (proven 2026-07-27 — "Timer running;
+   I'll poll just past 9:31" and the run exited, leaving HOPE/AZN
+   phantom-open). A separate RECONCILE FILLS run, launched by the
+   orchestrator after the auction, records the fills.
+4. If a fill DID already land while you were working (the order shows
+   `filled`), report it right then: `report_live_close(id,
+   exit_price=<average fill>, notes=...)`.
+
+## Reconcile-fill jobs ("RECONCILE FILLS ONLY ...")
+
+The orchestrator launches this after the opening auction, for positions whose
+exit was placed but not yet recorded. For each named decision:
+
+1. `get_equity_orders` for the symbol. If its close order shows `filled`,
+   call `report_live_close(id, exit_price=<the actual average fill>,
+   notes=...)`. Use the broker's average price, never an estimate.
+2. If the close order is still open/queued, leave it — report it as unfilled
+   with the order id and state. Do not cancel it, do not replace it.
+3. **Only** if a position has NO close order at all (expired, rejected,
+   cancelled): place one per the close-job rules above, then report it as
+   newly placed and unfilled.
+4. Place no other orders. This run exists to record reality, not to trade.
 
 ## Evening jobs ("queue auction exits; disaster valve ...")
 

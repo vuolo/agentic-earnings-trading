@@ -594,3 +594,26 @@ Keep this section honest — dated entries only, from real runs.
   auction - two non-trading days later, no re-placement needed. The gtc->gfd
   switch is therefore safe for Friday-entered BMO-Monday holds, not just
   overnight ones.
+- **2026-07-27 (later)** - **Three architecture improvements, all
+  test-covered (99 passing) and dry-run-verified across the three phases.**
+  (1) *Deterministic auction gate*: `_reconcile_live_fills` no longer relies
+  on monitor/scout/labeler happening to burn the clock past 9:30 - it sleeps
+  (orchestrator-owned, the thing an agent run structurally cannot do) until
+  09:31:30 ET when invoked early, defers cleanly on pre-open catch-up runs,
+  and now also runs on the morning verify-only re-fire path, which is the
+  natural post-auction recovery lane after a died main run or a late wake
+  replay. (2) *Usage-limit cooldown*: when a model hits its account cap the
+  launcher stamps `model_limited_until:<model>` in meta (45 min, vs the ~5h
+  refill window) and subsequent runs skip straight to the next model in the
+  chain instead of burning a doomed CLI boot + MCP handshake (~30-60s each;
+  Fable 5 was limited every day 07-20..27, so this was 8+ wasted boots per
+  day, several inside the 15:30 entry window). A success on a cooled model
+  clears the stamp; if every model in the chain is cooling, the full chain
+  runs anyway - the cooldown can only speed things up, never block a launch.
+  (3) *Briefing rework*: alerts (`exit_reconcile_needed`, `last_tick_error`)
+  render first, above the fold for mobile; the Plan section shows the plan
+  the system will actually execute - next session's eligible candidates
+  edge-ranked with the projected analyst slots flagged (verified identical
+  to the afternoon dry-run's selection), and further-out days as per-date
+  counts with core names called out - 400+ undifferentiated calendar lines
+  down to ~20.

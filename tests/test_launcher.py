@@ -7,11 +7,20 @@ detect it and re-run on the fallback model itself. These tests pin that seam.
 """
 from unittest import mock
 
+import pytest
+
 from orchestrator import launcher
 
 
 LIMIT_MSG = ("You've reached your Fable 5 limit. Run /usage-credits to "
              "continue or switch models with /model.\n")
+
+
+@pytest.fixture(autouse=True)
+def _tmp_db(tmp_path, monkeypatch):
+    """Point the cooldown meta store at a throwaway DB: launcher tests must
+    never stamp cooldowns into the real datasets/earnings.sqlite3."""
+    monkeypatch.setenv("EARNINGS_DB", str(tmp_path / "launcher-test.sqlite3"))
 
 
 def _models_from_calls(calls):
@@ -88,3 +97,52 @@ def test_fallback_flag_lists_downstream_models():
         launcher.FALLBACK_MODEL
     second_cmd = rc.call_args_list[1].args[0]
     assert "--fallback-model" not in second_cmd
+
+
+# -- usage-limit cooldown (2026-07-27): a limited model must not burn a boot
+# on every subsequent run in the tick. The stamp lives in meta so parallel
+# analysts and later roles all see it.
+
+def test_usage_limit_stamps_cooldown_and_next_run_skips_primary():
+    scripted = [(1, LIMIT_MSG), (0, "done\n")]
+    with mock.patch.object(launcher.shutil, "which", return_value="/x/claude"), \
+         mock.patch.object(launcher, "_run_capturing", side_effect=scripted):
+        assert launcher.run_role("scout") == 0
+    assert launcher.model_limited_until(launcher.DEFAULT_MODEL) is not None
+
+    # Next run: primary is skipped, ONE launch straight on the fallback.
+    with mock.patch.object(launcher.shutil, "which", return_value="/x/claude"), \
+         mock.patch.object(launcher, "_run_capturing",
+                           return_value=(0, "done\n")) as rc:
+        assert launcher.run_role("scout") == 0
+    assert rc.call_count == 1
+    assert _models_from_calls(rc.call_args_list) == [launcher.FALLBACK_MODEL]
+
+
+def test_all_models_limited_still_tries_full_chain():
+    launcher.stamp_model_limited(launcher.DEFAULT_MODEL)
+    launcher.stamp_model_limited(launcher.FALLBACK_MODEL)
+    with mock.patch.object(launcher.shutil, "which", return_value="/x/claude"), \
+         mock.patch.object(launcher, "_run_capturing",
+                           return_value=(0, "done\n")) as rc:
+        assert launcher.run_role("scout") == 0
+    # Chain not emptied: the primary is still attempted (trying beats failing).
+    assert _models_from_calls(rc.call_args_list)[0] == launcher.DEFAULT_MODEL
+
+
+def test_success_on_cooled_model_clears_cooldown():
+    launcher.stamp_model_limited(launcher.DEFAULT_MODEL)
+    launcher.stamp_model_limited(launcher.FALLBACK_MODEL)  # force all-limited path
+    with mock.patch.object(launcher.shutil, "which", return_value="/x/claude"), \
+         mock.patch.object(launcher, "_run_capturing", return_value=(0, "done\n")):
+        launcher.run_role("scout")
+    assert launcher.model_limited_until(launcher.DEFAULT_MODEL) is None
+
+
+def test_cooldown_read_failure_never_blocks_launch(monkeypatch):
+    monkeypatch.setenv("EARNINGS_DB", "/nonexistent-dir/nope/db.sqlite3")
+    with mock.patch.object(launcher.shutil, "which", return_value="/x/claude"), \
+         mock.patch.object(launcher, "_run_capturing",
+                           return_value=(0, "done\n")) as rc:
+        assert launcher.run_role("scout") == 0
+    assert rc.call_count == 1

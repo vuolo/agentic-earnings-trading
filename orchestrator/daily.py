@@ -42,6 +42,11 @@ STRATEGIST_MIN_NEW_OUTCOMES = 3
 # hard timeout; an unbounded list silently blows it (295 symbols -> exit 124,
 # 2026-07-27) and refreshes nothing at all.
 BACKTEST_REFRESH_MAX = 40
+# The 9:30:00 opening cross plus settle margin: fills are reportable after
+# this. The reconcile pass must never depend on other roles happening to burn
+# enough clock — it waits for this deterministically (orchestrator-owned
+# sleep, the thing an agent run structurally cannot do).
+AUCTION_SETTLE = dtime(9, 31, 30)
 
 # Afternoon entry clock (local wall clock = ET on this host). The window is
 # hard: orders must be PLACED inside the policy's 15:45-15:58 entry window.
@@ -228,6 +233,21 @@ def _reconcile_live_fills(store: Store, *, arm, arm_why: str, today: date,
         store.meta_set("exit_reconcile_needed", "")
         print("reconcile: no live exits outstanding")
         return
+    now = datetime.now()
+    if now.time() < dtime(9, 30):
+        # Pre-open catch-up run (RunAtLoad at 7-9am): nothing can have filled
+        # yet; the scheduled fire's own pass reconciles after the auction.
+        print("reconcile: pre-open — nothing can have filled; deferring to a "
+              "post-auction pass")
+        return
+    if now.time() < AUCTION_SETTLE:
+        wait = (now.replace(hour=AUCTION_SETTLE.hour,
+                            minute=AUCTION_SETTLE.minute,
+                            second=AUCTION_SETTLE.second, microsecond=0)
+                - now).total_seconds()
+        print(f"reconcile: waiting {int(wait)}s for the auction to settle "
+              "(deterministic — an agent run cannot be trusted to wait)")
+        time_mod.sleep(wait)
     ids = ", ".join(f"#{r['id']} {r['symbol']}" for r in due)
     if not arm:
         print(f"reconcile: {len(due)} position(s) unreported but {arm_why} "
@@ -350,6 +370,12 @@ def _phase_body(*, phase, run_scout, dry_run, model, today, cfg, store, arm, arm
                            "action): " + ", ".join(
                                f"#{r['id']} {r['symbol']} {r['action']}" for r in due_v))
                     print(f"executor exit {_run_with_evidence(store, 'executor', symbol=job, model=model)}")
+                    # A re-fire is often the post-auction recovery path (e.g.
+                    # the main run died, or a wake-replay landed at 11:00) —
+                    # verify/place alone repeats the phantom-open gap; the
+                    # reconcile pass reports whatever already filled.
+                    _reconcile_live_fills(store, arm=arm, arm_why=arm_why,
+                                          today=today, model=model)
                 else:
                     print("no live exits pending — done")
                 return

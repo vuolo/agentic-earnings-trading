@@ -12,13 +12,14 @@ context pack on its next run.
 
 from __future__ import annotations
 
+import os
 from datetime import date, datetime, timedelta, timezone
 
 from engine.arming import arm_status
 from engine.config import Config
 from engine.store import Store
 
-from .daily import analyst_due, next_trading_day
+from .daily import analyst_due, edge_rank, next_trading_day
 
 ML_TRAINING_THRESHOLD = 50  # labeled trade outcomes before a sidecar model is worth fitting
 
@@ -34,6 +35,18 @@ def build_briefing(cfg: Config, store: Store) -> str:
         f"# Operator Briefing - {today.isoformat()}",
         f"_Generated {datetime.now(timezone.utc).isoformat(timespec='seconds')} "
         "(deterministic; built from the store, not model output)._",
+    ]
+    # Alerts first — the operator reads this on a phone; anything that needs a
+    # human must be the first thing on screen, not buried in System health.
+    reconcile = store.meta_get("exit_reconcile_needed", "")
+    tick_err = store.meta_get("last_tick_error", "")
+    if reconcile:
+        md += ["", f"> 🚨 **ACTION NEEDED - live exits unreconciled: {reconcile}.** "
+                   "A real position may be unsold or its fill unrecorded; check "
+                   "the broker and the morning log."]
+    if tick_err:
+        md += ["", f"> ⚠️ **Last tick error**: {tick_err}"]
+    md += [
         "",
         "## Account & risk",
     ]
@@ -110,13 +123,26 @@ def build_briefing(cfg: Config, store: Store) -> str:
                   f"[{h['status']}] conv {h['conviction']} policy {h['policy_version']}"
                   f"{outcome}")
 
+    # Plan: show the plan the SYSTEM will actually execute, not the raw
+    # calendar. Post-market-wide-expansion the old per-event list ran 250+
+    # lines of undifferentiated names (unreadable on mobile, where this is
+    # read); the tick itself only analyzes the top edge-ranked candidates per
+    # session. So: next session in full, edge-ranked with the projected
+    # analyst slots flagged, and everything further out as per-date counts.
     md += ["", "## Plan - next 14 days (and why)"]
     events = store.upcoming_events(days=14)
     if not events:
         md.append("- No universe earnings in the next 14 days. Ticks keep running: "
                   "scout refreshes the calendar daily; nothing enters without an event.")
+    max_runs = int(os.environ.get("EARNINGS_MAX_ANALYST_RUNS", "6"))
     planned = 0
+    next_session: list[tuple] = []
+    later: dict[str, dict] = {}
+    detail_cutoff = today if analyst_due(today.isoformat(), "amc", today) else None
+    detail_cutoff = detail_cutoff or next_trading_day(today)
     for e in events:
+        if e["symbol"] in cfg.macro_watch:
+            continue  # context only; the gate blocks trading them regardless
         d = date.fromisoformat(e["report_date"])
         entry_day = d if e["timing"] == "amc" else None
         if e["timing"] != "amc":
@@ -126,19 +152,56 @@ def build_briefing(cfg: Config, store: Store) -> str:
                     entry_day = probe
                     break
                 probe += timedelta(days=1)
-        if entry_day is None:
+        if entry_day is None or entry_day < today:
             continue
+        core = e["symbol"] in cfg.universe
+        eligible = core or bool(e["screened"])
+        if entry_day <= detail_cutoff and not eligible:
+            continue  # unscreened non-core: can't be analyzed this session
         planned += 1
-        exit_desc = ("same-day after-hours ~16:50 if PDT allows, else next open"
-                     if e["timing"] == "amc" else f"post-report open {d.isoformat()} 09:31")
-        already = store.decisions_for_event(e["id"])
-        state = " (already decided)" if already and any(
-            x["action"] != "pass" or x["policy_version"] == cfg.policy_version
-            for x in already) else ""
-        md.append(f"- **{e['symbol']}** reports {e['report_date']} {e['timing']}: "
-                  f"analyst+entry {entry_day.isoformat()} ~15:40-15:58 ET, "
-                  f"exit {exit_desc}{state} - window per backtest gap stats "
-                  "(see `get_backtest_summary`)")
+        if entry_day <= detail_cutoff:
+            already = store.decisions_for_event(e["id"])
+            decided = bool(already and any(
+                x["action"] != "pass" or x["policy_version"] == cfg.policy_version
+                for x in already))
+            next_session.append((entry_day, e, core, decided))
+        else:
+            b = later.setdefault(entry_day.isoformat(),
+                                 {"n": 0, "screened": 0, "core": []})
+            b["n"] += 1
+            if core:
+                b["core"].append(e["symbol"])
+            elif e["screened"]:
+                b["screened"] += 1
+    if next_session:
+        entry_day = min(t[0] for t in next_session)
+        batch = [t for t in next_session if t[0] == entry_day]
+        ranked = sorted(batch, key=lambda t: edge_rank(store, t[1], t[2]))
+        md.append(f"- **Next entry session {entry_day.isoformat()} ~15:45-15:58 ET** - "
+                  f"{len(batch)} eligible candidate(s); top {min(max_runs, len(batch))} "
+                  "by edge rank get the analyst slots:")
+        for _, e, core, decided in ranked[:max_runs]:
+            d = e["report_date"]
+            exit_desc = ("exit same-day ~16:50 if PDT allows, else next open"
+                         if e["timing"] == "amc"
+                         else f"exit post-report open {d} 09:31")
+            tag = "core" if core else "screened"
+            md.append(f"  - **{e['symbol']}** ({tag}) reports {d} {e['timing']}: "
+                      f"{exit_desc}" + (" - already decided" if decided else ""))
+        rest = ranked[max_runs:]
+        if rest:
+            md.append("  - below the slot line: "
+                      + ", ".join(t[1]["symbol"] for t in rest))
+    if later:
+        md.append("- Further out (slots edge-ranked on the day):")
+        for day in sorted(later):
+            b = later[day]
+            parts = [f"{b['n']} candidate(s)"]
+            if b["core"]:
+                parts.append("core: " + ", ".join(sorted(b["core"])))
+            if b["screened"]:
+                parts.append(f"{b['screened']} screened")
+            md.append(f"  - entry {day}: " + " | ".join(parts))
     if events and planned == 0:
         md.append("- Events tracked but none enterable (timing/weekend constraints).")
 

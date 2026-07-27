@@ -22,6 +22,7 @@ import re
 import tempfile
 import threading
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -39,6 +40,65 @@ FALLBACK_MODEL = "claude-opus-5"
 # Signature of a per-account usage/quota exhaustion on stdout (exit 1). Distinct
 # from server overload (which --fallback-model handles automatically mid-stream).
 _USAGE_LIMIT_RE = re.compile(r"reached your .*\blimit\b|/usage-credits", re.I)
+
+# Usage-limit cooldown, shared across runs via the store's meta table. Once a
+# model hits its account-level cap, every later attempt on it is a guaranteed
+# failure (a full CLI boot + MCP handshake, ~30-60s wasted) until the usage
+# window refills — and during 2026-07-20..27 Fable 5 was limited EVERY day, so
+# every role in every tick burned that boot before falling back; inside the
+# tight 15:30 entry window that is real money-time. The cooldown is an
+# optimization only: reads/writes are best-effort, and if every model in the
+# chain is cooling down we try the full chain anyway rather than fail.
+MODEL_COOLDOWN_SECONDS = 45 * 60  # < the ~5h refill window: re-probe hourly-ish
+
+
+def _cooldown_key(model: str) -> str:
+    return f"model_limited_until:{model}"
+
+
+def _open_store():
+    from engine.config import Config
+    from engine.store import Store
+    return Store(Config.from_env().db_path)
+
+
+def model_limited_until(model: str) -> str | None:
+    """UTC ISO timestamp until which `model` is cooling down, else None."""
+    try:
+        s = _open_store()
+        try:
+            until = s.meta_get(_cooldown_key(model), "")
+        finally:
+            s.close()
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        return until if until > now else None
+    except Exception:
+        return None  # never block a launch on the optimization
+
+
+def stamp_model_limited(model: str) -> None:
+    try:
+        until = (datetime.now(timezone.utc)
+                 + timedelta(seconds=MODEL_COOLDOWN_SECONDS)
+                 ).isoformat(timespec="seconds")
+        s = _open_store()
+        try:
+            s.meta_set(_cooldown_key(model), until)
+        finally:
+            s.close()
+    except Exception:
+        pass
+
+
+def clear_model_limited(model: str) -> None:
+    try:
+        s = _open_store()
+        try:
+            s.meta_set(_cooldown_key(model), "")
+        finally:
+            s.close()
+    except Exception:
+        pass
 
 # Read-only market-data tools an analyst may use. place_*_order / cancel_* are
 # deliberately absent and must stay absent in v1 (CLAUDE.md rule 1).
@@ -290,6 +350,13 @@ def _run_role_inner(role_name: str, *, symbol, model, quiet, emit) -> int:
     )
     mcp_config = _write_mcp_config(version)
     chain = _model_chain(model)
+    # Skip models in usage-limit cooldown — unless that empties the chain
+    # (all limited), in which case trying is still better than not launching.
+    cooling = {m: u for m in chain if (u := model_limited_until(m))}
+    if cooling and len(cooling) < len(chain):
+        for m, u in cooling.items():
+            emit(f"notice: skipping {m} (usage-limited until {u})", err=True)
+        chain = [m for m in chain if m not in cooling]
     try:
         for i, active in enumerate(chain):
             cmd = ["claude", "-p", kickoff, "--model", active]
@@ -319,10 +386,14 @@ def _run_role_inner(role_name: str, *, symbol, model, quiet, emit) -> int:
                 emit(f"error: {role_name} run exceeded 22min and was killed — "
                      "next tick will reconcile", err=True)
                 return 124
-            if rc != 0 and _USAGE_LIMIT_RE.search(out) and i + 1 < len(chain):
-                emit(f"notice: {active} usage-limited — falling back to "
-                     f"{chain[i + 1]} for {role_name}", err=True)
-                continue
+            if rc != 0 and _USAGE_LIMIT_RE.search(out):
+                stamp_model_limited(active)  # spare sibling runs the dead boot
+                if i + 1 < len(chain):
+                    emit(f"notice: {active} usage-limited — falling back to "
+                         f"{chain[i + 1]} for {role_name}", err=True)
+                    continue
+            elif rc == 0 and model_limited_until(active):
+                clear_model_limited(active)  # limit lifted early — re-open it
             return rc
         return rc  # all models usage-limited; return the last rc (non-zero)
     finally:

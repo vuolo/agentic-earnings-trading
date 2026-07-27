@@ -1,10 +1,9 @@
-# Operator Briefing - 2026-07-26
-_Generated 2026-07-26T13:32:35+00:00 (deterministic; built from the store, not model output)._
+# Operator Briefing - 2026-07-27
+_Generated 2026-07-27T14:01:54+00:00 (deterministic; built from the store, not model output)._
 
 ## Account & risk
-- **LIVE - armed until 2026-08-04** (9d left); live caps $250.00/position, $450.00/day
-- Account (executor-reported 2026-07-26T13:24:24+00:00): equity $487.08, cash $420.43, buying power $296.91
-- ⏳ Unsettled proceeds: $123.52 - tradeable next trading day (T+1); capital cycles every other day on this cash account
+- **LIVE - armed until 2026-08-04** (8d left); live caps $250.00/position, $450.00/day
+- Account (executor-reported 2026-07-27T13:25:21+00:00): equity $488.32, cash $420.43, buying power $420.43
 - Designated account: ••••8223 ('Agentic', cash - T+1/GFV-guarded, no PDT; shorting not enabled)
 - Live closes today: 0 | same-day round trips this week: 0
 - Today's new exposure: $0.00
@@ -30,7 +29,6 @@ _Generated 2026-07-26T13:32:35+00:00 (deterministic; built from the store, not m
   - #28 KMI bearish_option [closed_paper] conv 0.5 policy 0.8.2 → exit 32.62 (+0.60%, P&L $-0.62)
 
 ## Plan - next 14 days (and why)
-- **BKR** reports 2026-07-26 amc: analyst+entry 2026-07-26 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 - **AGYS** reports 2026-07-27 amc: analyst+entry 2026-07-27 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 - **AMKR** reports 2026-07-27 amc: analyst+entry 2026-07-27 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 - **APLD** reports 2026-07-27 amc: analyst+entry 2026-07-27 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
@@ -173,6 +171,7 @@ _Generated 2026-07-26T13:32:35+00:00 (deterministic; built from the store, not m
 - **BIIB** reports 2026-07-29 bmo: analyst+entry 2026-07-28 ~15:40-15:58 ET, exit post-report open 2026-07-29 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **BOOT** reports 2026-07-29 amc: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 - **BSX** reports 2026-07-29 bmo: analyst+entry 2026-07-28 ~15:40-15:58 ET, exit post-report open 2026-07-29 09:31 - window per backtest gap stats (see `get_backtest_summary`)
+- **BTU** reports 2026-07-29 bmo: analyst+entry 2026-07-28 ~15:40-15:58 ET, exit post-report open 2026-07-29 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **CBRE** reports 2026-07-29 bmo: analyst+entry 2026-07-28 ~15:40-15:58 ET, exit post-report open 2026-07-29 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **CHRW** reports 2026-07-29 amc: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 - **CLH** reports 2026-07-29 bmo: analyst+entry 2026-07-28 ~15:40-15:58 ET, exit post-report open 2026-07-29 09:31 - window per backtest gap stats (see `get_backtest_summary`)
@@ -210,6 +209,7 @@ _Generated 2026-07-26T13:32:35+00:00 (deterministic; built from the store, not m
 - **LAD** reports 2026-07-29 bmo: analyst+entry 2026-07-28 ~15:40-15:58 ET, exit post-report open 2026-07-29 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **LHX** reports 2026-07-29 amc: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 - **LII** reports 2026-07-29 bmo: analyst+entry 2026-07-28 ~15:40-15:58 ET, exit post-report open 2026-07-29 09:31 - window per backtest gap stats (see `get_backtest_summary`)
+- **LMND** reports 2026-07-29 bmo: analyst+entry 2026-07-28 ~15:40-15:58 ET, exit post-report open 2026-07-29 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **LRCX** reports 2026-07-29 amc: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 - **MAA** reports 2026-07-29 amc: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 - **MAS** reports 2026-07-29 bmo: analyst+entry 2026-07-28 ~15:40-15:58 ET, exit post-report open 2026-07-29 09:31 - window per backtest gap stats (see `get_backtest_summary`)
@@ -256,6 +256,7 @@ _Generated 2026-07-26T13:32:35+00:00 (deterministic; built from the store, not m
 - **ASX** reports 2026-07-30 bmo: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit post-report open 2026-07-30 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **BLDR** reports 2026-07-30 bmo: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit post-report open 2026-07-30 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **BMY** reports 2026-07-30 bmo: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit post-report open 2026-07-30 09:31 - window per backtest gap stats (see `get_backtest_summary`)
+- **BUD** reports 2026-07-30 bmo: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit post-report open 2026-07-30 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **CHKP** reports 2026-07-30 bmo: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit post-report open 2026-07-30 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **CI** reports 2026-07-30 bmo: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit post-report open 2026-07-30 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **COIN** reports 2026-07-30 amc: analyst+entry 2026-07-30 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
@@ -272,6 +273,7 @@ _Generated 2026-07-26T13:32:35+00:00 (deterministic; built from the store, not m
 - **ICE** reports 2026-07-30 bmo: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit post-report open 2026-07-30 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **ILMN** reports 2026-07-30 amc: analyst+entry 2026-07-30 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 - **IP** reports 2026-07-30 bmo: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit post-report open 2026-07-30 09:31 - window per backtest gap stats (see `get_backtest_summary`)
+- **IR** reports 2026-07-30 amc: analyst+entry 2026-07-30 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 - **KBR** reports 2026-07-30 bmo: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit post-report open 2026-07-30 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **KKR** reports 2026-07-30 bmo: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit post-report open 2026-07-30 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **LH** reports 2026-07-30 bmo: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit post-report open 2026-07-30 09:31 - window per backtest gap stats (see `get_backtest_summary`)
@@ -293,6 +295,7 @@ _Generated 2026-07-26T13:32:35+00:00 (deterministic; built from the store, not m
 - **RDDT** reports 2026-07-30 amc: analyst+entry 2026-07-30 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 - **REGN** reports 2026-07-30 bmo: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit post-report open 2026-07-30 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **RIVN** reports 2026-07-30 amc: analyst+entry 2026-07-30 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
+- **SAIA** reports 2026-07-30 bmo: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit post-report open 2026-07-30 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **SHEL** reports 2026-07-30 bmo: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit post-report open 2026-07-30 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **SNY** reports 2026-07-30 bmo: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit post-report open 2026-07-30 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **SO** reports 2026-07-30 bmo: analyst+entry 2026-07-29 ~15:40-15:58 ET, exit post-report open 2026-07-30 09:31 - window per backtest gap stats (see `get_backtest_summary`)
@@ -398,6 +401,7 @@ _Generated 2026-07-26T13:32:35+00:00 (deterministic; built from the store, not m
 - **WYNN** reports 2026-08-04 amc: analyst+entry 2026-08-04 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 - **ZBRA** reports 2026-08-04 bmo: analyst+entry 2026-08-03 ~15:40-15:58 ET, exit post-report open 2026-08-04 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **APP** reports 2026-08-05 amc: analyst+entry 2026-08-05 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
+- **AXON** reports 2026-08-05 amc: analyst+entry 2026-08-05 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 - **CF** reports 2026-08-05 amc: analyst+entry 2026-08-05 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 - **CRUS** reports 2026-08-05 amc: analyst+entry 2026-08-05 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
 - **CVS** reports 2026-08-05 bmo: analyst+entry 2026-08-04 ~15:40-15:58 ET, exit post-report open 2026-08-05 09:31 - window per backtest gap stats (see `get_backtest_summary`)
@@ -473,15 +477,21 @@ _Generated 2026-07-26T13:32:35+00:00 (deterministic; built from the store, not m
 - **TTWO** reports 2026-08-07 bmo: analyst+entry 2026-08-06 ~15:40-15:58 ET, exit post-report open 2026-08-07 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **TU** reports 2026-08-07 bmo: analyst+entry 2026-08-06 ~15:40-15:58 ET, exit post-report open 2026-08-07 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 - **VST** reports 2026-08-07 bmo: analyst+entry 2026-08-06 ~15:40-15:58 ET, exit post-report open 2026-08-07 09:31 - window per backtest gap stats (see `get_backtest_summary`)
+- **FERG** reports 2026-08-10 bmo: analyst+entry 2026-08-07 ~15:40-15:58 ET, exit post-report open 2026-08-10 09:31 - window per backtest gap stats (see `get_backtest_summary`)
+- **MCHP** reports 2026-08-10 amc: analyst+entry 2026-08-10 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
+- **MNST** reports 2026-08-10 amc: analyst+entry 2026-08-10 ~15:40-15:58 ET, exit same-day after-hours ~16:50 if PDT allows, else next open - window per backtest gap stats (see `get_backtest_summary`)
+- **NBIS** reports 2026-08-10 bmo: analyst+entry 2026-08-07 ~15:40-15:58 ET, exit post-report open 2026-08-10 09:31 - window per backtest gap stats (see `get_backtest_summary`)
+- **PH** reports 2026-08-10 bmo: analyst+entry 2026-08-07 ~15:40-15:58 ET, exit post-report open 2026-08-10 09:31 - window per backtest gap stats (see `get_backtest_summary`)
+- **SONY** reports 2026-08-10 bmo: analyst+entry 2026-08-07 ~15:40-15:58 ET, exit post-report open 2026-08-10 09:31 - window per backtest gap stats (see `get_backtest_summary`)
 
 ## System health
-- morning tick last ran: 2026-07-25T09:36:54
-- afternoon tick last ran: 2026-07-25T15:30:05
-- evening tick last ran: 2026-07-25T16:51:11
-- ML sidecar: trained (active): 160 rows, CV accuracy 55% vs base rate 49%, as of 2026-07-26T13:32:35+00:00
+- morning tick last ran: 2026-07-26T09:32:35
+- afternoon tick last ran: 2026-07-26T15:30:05
+- evening tick last ran: 2026-07-26T16:51:35
+- ML sidecar: trained (active): 160 rows, CV accuracy 55% vs base rate 49%, as of 2026-07-27T14:01:54+00:00
 
 ## Longer-term roadmap status
-- Dataset: 22 closed trades + 10 labeled passes | backtests: 743 historical events
+- Dataset: 22 closed trades + 10 labeled passes | backtests: 1163 historical events
 - **ML sidecar (Phase 4)**: pipeline BUILT and self-activating - trains automatically each morning; advisory until ~50 labeled rows
 - Phase 2 (deterministic indicators): BUILT - compute_indicators / compute_implied_move run server-side
 - Strategy is STOCKS-ONLY (operator decision): live capital goes long equity; bearish theses are paper-only dataset legs (options L2 exists on the account but is deliberately unused)

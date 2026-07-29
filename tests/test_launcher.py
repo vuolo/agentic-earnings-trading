@@ -146,3 +146,41 @@ def test_cooldown_read_failure_never_blocks_launch(monkeypatch):
                            return_value=(0, "done\n")) as rc:
         assert launcher.run_role("scout") == 0
     assert rc.call_count == 1
+
+
+# -- transient overload retry (2026-07-29): "API Error: 529 Overloaded" killed
+# the 16:20 exit-queueing run with exit 1; not a usage limit, so the chain
+# loop (correctly) did not engage, and nothing retried a transient blip.
+
+OVERLOAD_MSG = "API Error: 529 Overloaded. This is a server-side issue...\n"
+
+
+def test_overload_retries_same_model_then_succeeds(monkeypatch):
+    monkeypatch.setattr(launcher, "_sleep", lambda s: None)
+    scripted = [(1, OVERLOAD_MSG), (0, "done\n")]
+    with mock.patch.object(launcher.shutil, "which", return_value="/x/claude"), \
+         mock.patch.object(launcher, "_run_capturing",
+                           side_effect=scripted) as rc:
+        assert launcher.run_role("scout") == 0
+    # Same model both times — a blip must not burn the fallback leg.
+    assert _models_from_calls(rc.call_args_list) == [
+        launcher.DEFAULT_MODEL, launcher.DEFAULT_MODEL]
+
+
+def test_persistent_overload_falls_back(monkeypatch):
+    monkeypatch.setattr(launcher, "_sleep", lambda s: None)
+    scripted = [(1, OVERLOAD_MSG), (1, OVERLOAD_MSG), (0, "done\n")]
+    with mock.patch.object(launcher.shutil, "which", return_value="/x/claude"), \
+         mock.patch.object(launcher, "_run_capturing",
+                           side_effect=scripted) as rc:
+        assert launcher.run_role("scout") == 0
+    assert _models_from_calls(rc.call_args_list) == [
+        launcher.DEFAULT_MODEL, launcher.DEFAULT_MODEL, launcher.FALLBACK_MODEL]
+
+
+def test_non_overload_error_still_does_not_retry():
+    with mock.patch.object(launcher.shutil, "which", return_value="/x/claude"), \
+         mock.patch.object(launcher, "_run_capturing",
+                           return_value=(2, "some real error\n")) as rc:
+        assert launcher.run_role("scout") == 2
+    assert rc.call_count == 1

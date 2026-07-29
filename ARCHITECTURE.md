@@ -617,3 +617,18 @@ Keep this section honest — dated entries only, from real runs.
   to the afternoon dry-run's selection), and further-out days as per-date
   counts with core names called out - 400+ undifferentiated calendar lines
   down to ~20.
+- **2026-07-29** - **Transient-overload retry added to the launcher, and
+  exercised live within minutes.** The 16:20 evening fire died on "API Error:
+  529 Overloaded" (exit 1): not a usage limit, so the chain loop correctly
+  did not engage, and the CLI's --fallback-model never fired (the request
+  failed before any handoff) - the exit-queueing run for FOUR live positions
+  (STLA/AUR/LYG/OWL, the biggest entry day yet) ended with nothing queued,
+  leaving only the 16:50 backup fire and the 9:24 pre-open placement as
+  nets. Fix: on an overload signature the launcher retries the SAME model
+  once after 30s (a blip must not burn the fallback leg), then advances down
+  the chain if it persists. The 16:50 fire then ran the new code from disk
+  and validated the whole ladder in production: fable-5 529 -> 30s retry ->
+  529 again -> fell back to opus-5 -> all four auction exits queued
+  (broker-confirmed, order IDs logged), exit 0. 102 tests pass, including
+  the three new ones pinning: blip-retry stays on the same model, persistent
+  overload falls back, and non-overload errors still never retry.

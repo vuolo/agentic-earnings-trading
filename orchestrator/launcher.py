@@ -41,6 +41,15 @@ FALLBACK_MODEL = "claude-opus-5"
 # from server overload (which --fallback-model handles automatically mid-stream).
 _USAGE_LIMIT_RE = re.compile(r"reached your .*\blimit\b|/usage-credits", re.I)
 
+# Transient server-side failure (exit 1 before any model handoff, so the CLI's
+# --fallback-model never engages and it is NOT a usage limit). Proven live
+# 2026-07-29 16:20: "API Error: 529 Overloaded" killed the exit-queueing run
+# outright and the tick moved on with nothing queued — only the 16:50 backup
+# fire and the 9:24 pre-open placement stood between four live positions and
+# an unqueued open. One short-delay retry on the SAME model absorbs the blip.
+_OVERLOAD_RE = re.compile(r"\b529\b|overloaded", re.I)
+OVERLOAD_RETRY_DELAY_S = 30
+
 # Usage-limit cooldown, shared across runs via the store's meta table. Once a
 # model hits its account-level cap, every later attempt on it is a guaranteed
 # failure (a full CLI boot + MCP handshake, ~30-60s wasted) until the usage
@@ -272,6 +281,12 @@ def _model_chain(primary: str) -> list[str]:
 _PRINT_LOCK = threading.Lock()  # atomic per-run output blocks under parallel runs
 
 
+def _sleep(seconds: float) -> None:
+    """Seam for tests (a 30s real sleep in the suite is not acceptable)."""
+    import time
+    time.sleep(seconds)
+
+
 def _run_capturing(cmd: list[str], *, timeout: int, tee: bool = True) -> tuple[int, str]:
     """Run cmd, tee its combined output live to our stdout (unless tee=False),
     and also return it so the caller can inspect for the usage-limit
@@ -390,6 +405,19 @@ def _run_role_inner(role_name: str, *, symbol, model, quiet, emit) -> int:
                 stamp_model_limited(active)  # spare sibling runs the dead boot
                 if i + 1 < len(chain):
                     emit(f"notice: {active} usage-limited — falling back to "
+                         f"{chain[i + 1]} for {role_name}", err=True)
+                    continue
+            elif rc != 0 and _OVERLOAD_RE.search(out):
+                # Transient 529: retry once on the same model after a pause,
+                # then (if it persists) advance to the next model in the chain.
+                emit(f"notice: {active} overloaded (transient) — retrying once "
+                     f"in {OVERLOAD_RETRY_DELAY_S}s", err=True)
+                _sleep(OVERLOAD_RETRY_DELAY_S)
+                rc, out = _run_capturing(cmd, timeout=1320, tee=not quiet)
+                if quiet:
+                    emit(out.rstrip())
+                if rc != 0 and _OVERLOAD_RE.search(out) and i + 1 < len(chain):
+                    emit(f"notice: {active} still overloaded — falling back to "
                          f"{chain[i + 1]} for {role_name}", err=True)
                     continue
             elif rc == 0 and model_limited_until(active):

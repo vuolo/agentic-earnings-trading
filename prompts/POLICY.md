@@ -1,7 +1,54 @@
 # Trading Policy
 
-Version: 0.8.6
+Version: 0.8.7
 Mode: live when the operator's arm switch is active; paper otherwise
+
+v0.8.7 (strategist review, 2026-07-29, n=39 labeled events, 6 new since
+v0.8.6: #40 JBLU, #42 APLD, #46 F, #47 SOFI, #48 VRT, plus the #10 OMC
+date-integrity pass counterfactual): every new outcome landed on the side
+its template predicted; all changes are PATCH documentation sharpenings,
+no rule flips, no cap changes. (1) #48 VRT is the SECOND preview-grade
+template-(i) win (after #41 GLW) and the FIRST labeled bearish win on a
+CORE name: insider sale (57% of a direct stake), RBC PT cut and a named
+liquid-cooling-scaling concern against a top-of-range bar at 74x, with
+momentum violently breaking down (-28% off the high, -6.7% to a new
+3-month low on entry day, GLW's -15% same-morning gap as the sector
+tell) - VRT beat 1.52 vs 1.43 and STILL gapped -8.35% at the auction
+(+$2.53; quote -11.17%). Template (i) is 5-for-5 (6 with RYAAY); the
+preview-grade variant is 2-for-2. (2) #47 SOFI (+$2.78, -6.77% auction on
+a 0.12 vs 0.11 beat) opens an OPEN HYPOTHESIS (n=1, observation only):
+own-name precedent that good news pays badly (last print gapped -9.9% on
+record numbers) plus DECLINING - not violent - momentum won at floor-band
+size 16% OFF the high, i.e. the template-(ii) precedent conjunct working
+away from the high. Conviction <= 0.50 and floor size on this shape until
+more labels land. (3) #46 F (+4.50%, -$1.64 at the $30 floor) sets the
+same-sector tell's LIMIT: GM's -8% tariff fall did not transfer to a name
+whose own momentum was UP into the print with its bar already cut - the
+tell is SUBORDINATE to the momentum leg and never upgrades an
+off-template lean. Off-template bearish is now 0-for-6 with one flat;
+floor discipline again capped the cost. (4) The refuse-the-off-high-short
+conversion is 6-1: #40 JBLU (+3.88%, +$0.84) and #42 APLD (+1.99%,
++$0.43) took template-(iii) longs on NAMED company-specific forward
+drivers (JBLU's fuel-recapture guidance raise + Spirit slots; APLD's
+~$16B contracted lease backlog) while refusing bearish leans into
+up-momentum/near-low tape. Longs are 6-for-11 lifetime; template-era
+longs 6-1 net +$3.44, all on real auction fills. (5) ML: #42 APLD
+correctly refused a down-band read (0.316) near the low and gapped UP -
+the down-band is 8-for-14 overall and 0-for-3 at/near 52-week lows
+(T 0.229, EQT 0.199, APLD 0.316); do NOT cite it as corroboration on a
+near-low name. The 0.35-0.50 dead band is noise a FIFTH time (#40 0.493
+-> UP, #46 0.411 -> UP, #47 0.406 -> -6.77%, #48 0.370 -> -8.35%). The
+7/28 retrain is barely above base rate (168 rows, CV 51% vs 50%).
+(6) Sizing: #46 F's +4.50% breached the +3.16% best gap (8th tail
+breach) but the clean 3-DTE implied 6.51% COVERED it - max() vindicated
+again; VRT and JBLU also correctly sized against the wider historical
+tail. (7) Label mechanics verified on both paths again: #40/#42 live
+auction fills 09:30:00-09:30:01; #46/#47/#48 notes record both prints
+(the quote flattered the SOFI/VRT shorts, hurt the F short - the fade
+bias behaves as documented). #10 OMC's counterfactual closes the
+date-integrity loop: the phantom 7/17 row was correctly refused and the
+real 7/28 print beat and still gapped -2.64%; live #49 (long) is pending
+label - read them together next review.
 
 v0.8.6 (strategist review, 2026-07-28, n=33 labeled events, 6 new since
 v0.8.5: #38 HOPE, #39 AZN, #41 GLW, #43 PYPL, #44 NVTS, #45 KO): the
@@ -321,7 +368,9 @@ marked (server) MUST be tool outputs embedded verbatim — never hand-computed:
    the implied move was the closer number in the first four and was ALSO
    breached in #35 SLB (3.01% on a clean 1-DTE weekly). Both estimates can
    fail together when a live catalyst is in play - size accordingly (and
-   they failed together AGAIN in the trade's favor on #41 GLW).
+   they failed together AGAIN in the trade's favor on #41 GLW). #46 F
+   adds an 8th tail breach (v0.8.7): realized +4.50% vs a +3.16% best
+   gap, COVERED by the clean 3-DTE implied 6.51% - max() did its job.
 4. **historical_reactions** — last 8 quarters where available: day-after move
    % per report, beat/miss record, direction consistency. Note explicitly
    whether the observed gap sample is ONE-SIGNED (every gap the same
@@ -329,33 +378,50 @@ marked (server) MUST be tool outputs embedded verbatim — never hand-computed:
    +1.2% worst gap and gapped +5.61%, and that is a different object from a
    4/6 or 5/6 up_rate (v0.8.5, open hypothesis, n=1 - it does NOT lift the
    0.60 weak-basis cap). Note also how the name's own LAST BEAT gapped -
-   the precedent leg of template (ii) is load-bearing (v0.8.6, #45 KO).
+   the precedent leg of template (ii) is load-bearing (v0.8.6, #45 KO). The
+   precedent leg may matter OFF the high too (v0.8.7, OPEN HYPOTHESIS,
+   n=1): #47 SOFI's last beat had gapped -9.9%, and a floor-band bearish
+   lean on that precedent plus declining momentum won -6.77% at 16% off
+   the high - keep conviction <= 0.50 and floor size on this shape.
 5. **valuation_context** — P/E, market cap; note extremes.
 6. **sentiment** — WebSearch recent news: bullish/bearish/mixed with 2-3
    cited headlines. Note any macro_watch reports in the same week (correlated
    AI-complex risk). Note also whether a direct SECTOR COMP has already
    printed this week and how it gapped - #32 VZ sourced its long direction
    from T's +4.27% gap two days earlier on the identical narrative and won
-   (v0.8.5); the bearish mirror won twice (UAL -> AAL on the fuel shock).
+   (v0.8.5); the bearish mirror won twice (UAL -> AAL on the fuel shock). The tell
+   is SUBORDINATE to the momentum leg (v0.8.7): #46 F shorted into GM's
+   -8% tariff fall while F's own tape was UP into the print with the bar
+   already cut, and F beat and gapped +4.50% - a bearish sector tell
+   never upgrades a lean whose own momentum is rising.
 7. **ml_advisory** (server) — `get_ml_prediction` output, recorded on every
-   decision. The sidecar is above base rate (160 rows, CV 55% vs 49%) and
-   its confident down-band (prob_up < 0.35) is 8-for-13 directionally
-   through 7/28 (right: #11 DX 0.267, #13 RYAAY 0.244, #17 AGNC 0.264,
+   decision. The sidecar's 7/28 retrain is barely above base rate (168 rows,
+   CV 51% vs 50%) and
+   its confident down-band (prob_up < 0.35) is 8-for-14 directionally
+   through 7/29 (right: #11 DX 0.267, #13 RYAAY 0.244, #17 AGNC 0.264,
    #18 KEY 0.315, #20 SCHW 0.277, #23 NLY 0.175, #25 ONB 0.213, #29 ELS
    0.287; wrong: #22 T 0.229, #24 EQT 0.199, #21 WBS 0.215 counterfactual,
-   #28 KMI 0.289, #45 KO 0.301). Its two deepest reads ever (0.175 and
+   #28 KMI 0.289, #45 KO 0.301, #42 APLD 0.316). Its two deepest reads ever (0.175 and
    0.199) split one right one wrong - depth adds no calibration (v0.8.2),
    #28/#29 (both ~0.288, split) confirm the band is corroboration, not a
    catalyst, and #45 KO shows the band cannot rescue a lean whose own
-   precedent contradicts it (v0.8.6).
+   precedent contradicts it (v0.8.6). The wrong calls CLUSTER at the LOWS
+   (v0.8.7): T, EQT and APLD sat at or near 52-week lows and all gapped
+   UP against down-band reads (0-for-3 there) - near the lows the band
+   reads the same fear the failed shorts leaned on; do not cite it as
+   corroboration on a near-low name. Its right calls all sit on
+   near-high/high-bar setups.
    **Reads between 0.35 and 0.50 are NOT corroboration in either direction
-   (v0.8.4, reconfirmed v0.8.5 and a FOURTH time v0.8.6)**: #33 NEE cited
+   (v0.8.4, reconfirmed v0.8.5, a FOURTH time v0.8.6 and a FIFTH
+   v0.8.7)**: #33 NEE cited
    prob_up 0.425 as an "above base rate" bearish leg and the stock printed
    UP at the auction; the three v0.8.5 longs split with no signal (#32 VZ
    0.413 -> UP, #36 NEM 0.444 -> DOWN, #37 EW 0.476 -> UP); the v0.8.6
    batch did it again (#39 AZN 0.433 -> UP, #38 HOPE 0.445 -> UP, #43 PYPL
    0.473 -> UP, #41 GLW 0.359 -> DOWN 15%); #34 INTC 0.551 and #35 SLB
-   0.463 were correctly treated as neutral. **There is NO validated band
+   0.463 were correctly treated as neutral; the v0.8.7 batch split again
+   (#40 JBLU 0.493 -> UP, #46 F 0.411 -> UP, #47 SOFI 0.406 -> -6.77%,
+   #48 VRT 0.370 -> -8.35%). **There is NO validated band
    above 0.35 in either direction (v0.8.6)**: the first labeled read above
    0.5 ever (#44 NVTS 0.653, the model's strongest up-read) preceded a
    -10.12% gap. Only the <0.35 band counts, and even then it may
@@ -423,28 +489,31 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   - Shorts use the backtest's BEST gap (upside tail) as the historical input
     to the risk check — a short's worst case is the stock gapping UP.
 - **Live calibration caution (v0.7.2, updated v0.8.6 — do NOT flip the
-  default)**: through n=33 labeled events the tape is two-sided (#41 GLW
+  default)**: through n=39 labeled events the tape is two-sided (#41 GLW
   -15.01% and #44 NVTS -10.12% down; #45 KO +5.03%, #35 SLB +6.14%,
   #37 EW +5.61%, #43 PYPL +1.36% up) - direction must come from a
-  template, never from a tape prior. Longs are now 4-for-9 lifetime:
-  0-for-4 on the first batch (-$14.80, all backward-looking legs) and 4-1
-  for net +$2.17 on the template-era batch (#32 VZ +1.12% +$0.49, #37 EW
+  template, never from a tape prior. Longs are now 6-for-11 lifetime:
+  0-for-4 on the first batch (-$14.80, all backward-looking legs) and 6-1
+  for net +$3.44 on the template-era batch (#32 VZ +1.12% +$0.49, #37 EW
   +5.61% +$1.86, #36 NEM -1.22% -$0.55, #38 HOPE +0.67% +$0.18, #39 AZN
-  +0.48% +$0.19), all five labeled off real auction fills.
-  Template-era bearish paper is 11-2-3 net +$12.17 AS LABELED, but the
+  +0.48% +$0.19, #40 JBLU +3.88% +$0.84, #42 APLD +1.99% +$0.43), all
+  seven labeled off real auction fills.
+  Template-era bearish paper is 13-3-3 net +$15.84 AS LABELED, but the
   labels can credit post-open fade the auction exit does not capture
-  (v0.8.4): on an auction basis it is at minimum 10-2-4 and roughly $4.70
+  (v0.8.4): on an auction basis it is at minimum 12-3-4 and roughly $4.70
   lower. Paper legs are labeled off a ~09:33-09:38 quote while live legs
   are labeled off REAL AUCTION FILLS - do not compare paper and live P&L
   directly, and discount the paper scoreboard. Three direction-sourcing
   templates are validated at exploration size:
-  (i) **concrete negative forward catalyst** — validated 4-for-4: #7 CAG
+  (i) **concrete negative forward catalyst** — validated 5-for-5: #7 CAG
   (imminent dividend cut, -2.54%), #8 UAL (jet fuel surged above
   management's cost assumption, -3.07%), #30 AAL (same June fuel shock
   above the guidance curve into a low bar, -6.85% labeled / -4.99% at the
   auction print), #41 GLW (-14.28% at the auction vs entry, +$4.49, the
-  biggest bearish win in the book); #13 RYAAY (guided −22% YoY EPS, 90-day
-  estimate collapse, T-1 −5.8% break, -5.37%) is a fifth. This template is
+  biggest bearish win in the book), #48 VRT (beat 1.52 vs 1.43 and STILL
+  gapped -8.35% at the auction, +$2.53 - the first labeled bearish win on
+  a CORE name); #13 RYAAY (guided −22% YoY EPS, 90-day
+  estimate collapse, T-1 −5.8% break, -5.37%) is a sixth. This template is
   LOCATION-INDEPENDENT (v0.8.3): AAL won at mid-range (21.5% off the high)
   because momentum was BREAKING DOWN into the print (-19% in 3 weeks) - the
   discriminator vs the T/EQT losers is momentum DIRECTION, not
@@ -453,7 +522,10 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   +26.7% EPS bar at 76x, insider sales, plant shutdown) qualifies when
   momentum is VIOLENTLY breaking down (-43% in 4 weeks, new low on entry
   day) - conviction stays ~0.52-0.55 and exploration size on the softer
-  catalyst grade. A concrete forward catalyst plus a tape sliding DOWN
+  catalyst grade. #48 VRT confirms the preview-grade variant 2-for-2
+  (v0.8.7): insider sale + PT cut + named cooling-scaling concern against
+  a top-of-range bar at 74x, with -28% off the high, a new 3-month low on
+  entry day and GLW's -15% same-morning gap as the tell. A concrete forward catalyst plus a tape sliding DOWN
   into the print overrides the near-high requirement of template (ii); a
   catalyst-less bearish lean into UP momentum off a low is the failure mode
   (T, EQT).
@@ -478,7 +550,8 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   flat (#22 T +4.27% and #24 EQT +2.04% at the lows; #28 KMI +1.77% at the
   auction, 6.8% off the high; #33 NEE +0.57% at the auction, 8.65% off the
   high; #29 ELS +0.11% at the auction, 5.2% off, a flat that its label
-  scored as a win), and 0-for-5 counting #45 KO's inverted-precedent leg.
+  scored as a win), 0-for-5 counting #45 KO's inverted-precedent leg, and 0-for-6 counting
+  #46 F's up-momentum sector-tell leg (+4.50% at the auction, v0.8.7).
   A bearish lean off template (ii) at >~4% off the high is the MIRROR of
   the failed cheapness longs: "already fallen" (and "modestly de-rated")
   is not a down-catalyst. Off-high, a bearish leg requires template (i);
@@ -499,13 +572,16 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   ONE-SIGNED event history (#37 EW 6/6 up gaps with the worst still +1.2%,
   entering oversold at -11.4% off its high with an unchanged bar and fresh
   target raises: +5.61%, +$1.86), or a NAMED COMPANY-SPECIFIC forward
-  driver. **A MACRO or COMMODITY driver does not qualify as (2)**: #36 NEM
+  driver (validated 2-for-2 in v0.8.7: #40 JBLU's mid-June guidance raise
+  with 40%+ fuel recapture plus Spirit LGA slots, +3.88% +$0.84; #42
+  APLD's ~$16B contracted Polaris Forge lease backlog, +1.99% +$0.43). **A MACRO or COMMODITY driver does not qualify as (2)**: #36 NEM
   sourced its long from gold at record highs and lost 1.22% - the print
   reprices company items (production -10.9% YoY, costs), not the commodity,
   so a macro driver is at best a tiebreaker. The broader
-  refuse-the-off-high-short conversion is 4-1 through v0.8.6 (#32 VZ,
+  refuse-the-off-high-short conversion is 6-1 through v0.8.7 (#32 VZ,
   #37 EW, #39 AZN off-template floor long +0.48%, #38 HOPE
-  ambiguous-catalyst floor long +0.67%; #36 NEM the loss). This template
+  ambiguous-catalyst floor long +0.67%, #40 JBLU +3.88%, #42 APLD +1.99%;
+  #36 NEM the loss). This template
   does NOT lift any cap: a long still requires a named CONCRETE FORWARD
   catalyst to exceed 0.60, and "cheap / beats / momentum" is never one
   (the 0-for-4 batch). Its whole value is that it converts the documented
@@ -558,7 +634,10 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   loss at -$1.86 through a +5.03% adverse gap, and #38 HOPE's $27 floor
   overrode a $244.44 tool number priced off a 0.84% adverse input - the
   small-adverse/big-notional trap in its purest form yet - and still won
-  its label.
+  its label. The 7/28-7/29 batch re-validated it (v0.8.7): #46 F's $30
+  floor (tool $45.08) capped the batch's only losing leg at -$1.64
+  through a +4.50% adverse gap, and #47 SOFI's floor-band $29.53 earned
+  +$2.78 - the floor caps the losers without starving the dataset.
 - `adverse_move_pct = max(implied_move_pct, |historical gap tail|)` — the
   v0.7.1 rule, unchanged: the tail is the WORST gap for longs, the BEST gap
   for bearish legs; with n ≤ 6 the historical extreme is biased low and the
@@ -649,7 +728,8 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   meets that standard (v0.8.5).** #32 VZ, #36 NEM and #37 EW were labeled
   off real broker auction fills (2026-07-24 09:30:01-09:30:21 ET at 44.31,
   93.04 and 88.00), which is the price the strategy actually got; #38 HOPE
-  and #39 AZN followed (2026-07-27 09:30 fills). PAPER
+  and #39 AZN followed (2026-07-27 09:30 fills), then #40 JBLU and #42
+  APLD (2026-07-28 09:30:00-09:30:01 fills). PAPER
   legs are still labeled from a fresh quote at ~09:33-09:38, and that bias
   is systematic where the post-open fade flatters short legs:
   #33 NEE opened 90.655 against a 90.145 entry (+0.57%, a LOSS) yet
@@ -659,7 +739,10 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   Labeled P&L across those four is +$5.12 versus about +$0.37 on an auction
   basis. The bias is a FADE bias, not a universal pro-short bias (v0.8.6):
   when the stock keeps RUNNING after the open the quote is WORSE for the
-  short leg than the auction was (#45 KO auction +5.03% but quote +6.19%).
+  short leg than the auction was (#45 KO auction +5.03% but quote +6.19%); re-confirmed both ways on
+  7/29 (v0.8.7) - the ~09:43 quote flattered the #47 SOFI and #48 VRT
+  shorts (-9.40%/-11.17% vs -6.77%/-8.35% at the auction) and hurt the
+  #46 F short (+5.47% vs +4.50%).
   Label notes now record BOTH prints. When you cite a labeled outcome in a
   thesis or a review, prefer the
   auction figure where the note records it, treat pre-0.8.4 bearish P&L as
@@ -674,8 +757,8 @@ Missing a component? Say so explicitly (`"unavailable"`), don't invent numbers.
   forcing #20 SCHW to pass on a lean the counterfactual says was right.
   VERIFIED WORKING 2026-07-22 (v0.8.2): all four 7/21 paper legs (#22 T,
   #23 NLY, #24 EQT, #25 ONB) closed on time at the 7/22 morning tick, no
-  slot contamination; #28 KMI, #29 ELS, #30 AAL, #33 NEE, #41 GLW and
-  #45 KO likewise closed
+  slot contamination; #28 KMI, #29 ELS, #30 AAL, #33 NEE, #41 GLW, #45 KO, #46 F, #47 SOFI
+  and #48 VRT likewise closed
   on time at their windows. A paper leg found open past its window is
   closed at the first available tick and the late close is stated in the
   label notes.
